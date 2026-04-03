@@ -86,13 +86,11 @@
 
         const playTick = () => playTone(800, 'sine', 0.05);
         
-        // Âm thanh Mario Ăn Đồng Xu (B5 -> E6)
         const playSuccess = () => {
             playTone(987.77, 'square', 0.1); 
             setTimeout(() => playTone(1318.51, 'square', 0.4), 100); 
         };
         
-        // Âm thanh Mario Mất Mạng/Game Over (F4 -> E4 -> D4 -> C4)
         const playFail = () => {
             playTone(349.23, 'square', 0.1);
             setTimeout(() => playTone(329.63, 'square', 0.1), 100);
@@ -106,7 +104,6 @@
         }
 
         // --- MÀU SẮC ĐÁP ÁN QUIZIZZ ---
-        // Sử dụng box-shadow để tạo nút 3D không bị xô lệch layout khi bấm
         const QUIZIZZ_COLORS = [
             'bg-[#2D70AE] shadow-[0_6px_0_#1A4B77] hover:bg-[#3482C9] active:shadow-[0_0px_0_#1A4B77] active:translate-y-[6px] text-white', 
             'bg-[#2D9DA6] shadow-[0_6px_0_#1A6B72] hover:bg-[#34B4BE] active:shadow-[0_0px_0_#1A6B72] active:translate-y-[6px] text-white', 
@@ -132,13 +129,13 @@
             { short: "1 Đ. Toán", text: "1 điểm cộng môn Toán", weight: 50 }, 
             { short: "2 Đ. Toán", text: "2 điểm cộng môn Toán", weight: 10 }, 
             { short: "3 Đ. Toán", text: "3 điểm cộng môn Toán", weight: 100 / 3 }, 
-            { short: "Miễn Tử", text: "Phiếu 'Kim Bài Miễn Tử': Đặc quyền được miễn kiểm tra miệng hoặc bài cũ cho 1 lần bất kỳ trong tương lai.", weight: 20 / 21 },
-            { short: "Gieo Đau", text: "Voucher 'Gieo Rắc Nỗi Đau': Được quyền chỉ định ngay một đứa bạn thân lên bảng trả bài tiếp theo.", weight: 20 / 21 },
+            { short: "Miễn Tử", text: "Phiếu 'Kim Bài Miễn Tử': Được miễn kiểm tra miệng hoặc bài cũ 1 lần.", weight: 20 / 21 },
+            { short: "Gieo Đau", text: "Voucher 'Gieo Rắc Nỗi Đau': Chỉ định ngay một bạn thân lên bảng trả bài.", weight: 20 / 21 },
             { short: "Thiên Tài", text: "Bằng Khen 'Thiên Tài': Giáo viên trao giấy chứng nhận 'IQ vô cực'.", weight: 20 / 21 },
-            { short: "Pháo Tay", text: "Tràng Pháo Tay VIP: Yêu cầu cả lớp đứng dậy, vỗ tay đúng 3 nhịp và đồng thanh hô to: 'Quá đỉnh!'.", weight: 20 / 21 },
-            { short: "Ghế Nóng", text: "Đặc Quyền 'Ghế Nóng': Thích ngồi vị trí nào cũng được, người khác sẽ đổi chỗ cho mình.", weight: 20 / 21 },
-            { short: "Đại Sứ", text: "Chức Vụ 'Đại Sứ': Trở thành 'Đại sứ nhắc bài' – được cấp phép nhắc bài hợp pháp cho 1 bạn khác trong lần kiểm tra miệng tới (giới hạn 1 câu).", weight: 20 / 21 },
-            { short: "Động Viên", text: "Gói 'Động Viên Tinh Thần': Nhận được một cái bắt tay thật chặt, kèm theo ánh mắt tự hào, rưng rưng cảm động từ giáo viên kéo dài trong đúng 5 giây không chớp mắt.", weight: 20 / 21 },
+            { short: "Pháo Tay", text: "Tràng Pháo Tay VIP: Cả lớp đứng dậy, vỗ tay 3 nhịp và hô to: 'Quá đỉnh!'.", weight: 20 / 21 },
+            { short: "Ghế Nóng", text: "Đặc Quyền 'Ghế Nóng': Thích ngồi vị trí nào cũng được, người khác phải đổi chỗ.", weight: 20 / 21 },
+            { short: "Đại Sứ", text: "Chức Vụ 'Đại Sứ': Cấp phép nhắc bài hợp pháp cho 1 bạn (giới hạn 1 câu).", weight: 20 / 21 },
+            { short: "Động Viên", text: "Gói 'Động Viên': Nhận cái bắt tay thật chặt, ánh mắt tự hào 5s không chớp mắt.", weight: 20 / 21 },
         ];
 
         const getWeightedRandomGift = () => {
@@ -247,6 +244,7 @@
             const [sheetInput, setSheetInput] = useState('');
             const [isFetchingSheet, setIsFetchingSheet] = useState(false);
             const [showSidebar, setShowSidebar] = useState(true);
+            const [showShortcuts, setShowShortcuts] = useState(false);
 
             const [isSpinning, setIsSpinning] = useState(false);
             const [rotation, setRotation] = useState(0);
@@ -254,21 +252,21 @@
             const [showWinnerModal, setShowWinnerModal] = useState(false);
             const [quizState, setQuizState] = useState({ active: false, student: null, question: null, displayOptions: [], selectedOptIndex: null, streak: 0, status: null });
             
-            const [giftState, setGiftState] = useState({ active: false, isSpinning: false, rotation: 0, winner: null });
+            // CẬP NHẬT STATE QUÀ: Thêm currentTickText để chạy hiệu ứng slot machine
+            const [giftState, setGiftState] = useState({ active: false, isSpinning: false, rotation: 0, winner: null, currentTickText: '???' });
 
             const [timer, setTimer] = useState(0); 
             const [timerActive, setTimerActive] = useState(false);
 
             const isShortcutSpin = useRef(false);
 
-            // --- LƯU TRỮ DỮ LIỆU LÊN LOCALSTORAGE ---
+            // --- LƯU TRỮ DỮ LIỆU ---
             useEffect(() => { localStorage.setItem('vq_saved_lessons', JSON.stringify(savedLessons)); }, [savedLessons]);
             useEffect(() => { localStorage.setItem('vq_students', JSON.stringify(students)); }, [students]);
             useEffect(() => { localStorage.setItem('vq_rewards', JSON.stringify(rewards)); }, [rewards]);
             useEffect(() => { localStorage.setItem('vq_questions', JSON.stringify(questions)); }, [questions]);
             useEffect(() => { localStorage.setItem('vq_topic', topic); }, [topic]);
 
-            // --- CHỨC NĂNG XỬ LÝ EXCEL (SHEETJS) ---
             const downloadTemplate = () => {
                 if (!window.XLSX) return alert("Thư viện Excel đang tải, vui lòng thử lại sau giây lát.");
                 const ws_data = [
@@ -339,7 +337,6 @@
                 reader.readAsBinaryString(file);
             };
 
-            // --- LOGIC SƠ ĐỒ THƯ VIỆN BÀI HỌC (NÂNG CẤP) ---
             const handleSaveLesson = () => {
                 if (!topic.trim()) return alert("Vui lòng nhập Chủ đề bài học trước khi lưu!");
                 if (!sheetInput.trim() && questions.length === 0) return alert("Vui lòng nhập ID Sheet hoặc tải lên file Excel trước khi lưu!");
@@ -352,7 +349,7 @@
                     category: category.trim() || "Thư mục chung", 
                     topic: topic.trim(), 
                     sheetId: sheetInput.trim(),
-                    questions: questions // Lưu trữ trực tiếp câu hỏi (Hỗ trợ file Excel offline)
+                    questions: questions 
                 };
                 setSavedLessons(prev => [...prev, newLesson]);
                 alert(`Đã lưu bài "${topic}" vào thư mục "${category}"!`);
@@ -373,7 +370,6 @@
                     setQuestions([]);
                 }
 
-                // Hiệu ứng chớp sáng để báo hiệu
                 const setupForm = document.getElementById('setup-form-container');
                 if(setupForm) {
                     setupForm.classList.add('scale-[1.01]', 'shadow-blue-500/50');
@@ -381,7 +377,6 @@
                 }
             };
 
-            // Sao lưu & Phục hồi Thư viện
             const exportLibrary = () => {
                 if (savedLessons.length === 0) return alert("Thư viện đang trống!");
                 const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(savedLessons));
@@ -426,7 +421,6 @@
                 }, {});
             }, [savedLessons]);
 
-            // --- LOGIC ĐỒNG HỒ ĐẾM NGƯỢC ---
             useEffect(() => {
                 let interval = null;
                 if (timerActive && timer > 0) {
@@ -444,7 +438,6 @@
                 return `${m}:${s < 10 ? '0' : ''}${s}`;
             };
 
-            // --- PHÍM TẮT ---
             useEffect(() => {
                 const handleKeyDown = (e) => {
                     if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
@@ -486,7 +479,6 @@
                 return () => window.removeEventListener('keydown', handleKeyDown);
             }, []);
 
-            // NÚT BẮT ĐẦU
             const handleStartSetup = async () => {
                 if (!topic.trim()) return alert("Vui lòng nhập chủ đề bài học!");
                 
@@ -552,7 +544,7 @@
                 setQuizState({ active: false, student: null, question: null, displayOptions: [], selectedOptIndex: null, streak: 0, status: null });
                 setTimeout(() => {
                     triggerSpin((wonItem, wasShortcut) => {
-                        if (!wasShortcut && mode !== 'QUESTION') setShowWinnerModal(true); 
+                        if (!wasShortcut) setShowWinnerModal(true); 
                         playSuccess();
                         if (mode === 'QUESTION') {
                             startQuizMode(wonItem); 
@@ -577,7 +569,7 @@
                 setQuizState(prev => ({ ...prev, active: false })); 
                 setTimeout(() => {
                     triggerSpin((wonItem, wasShortcut) => {
-                        if (!wasShortcut && mode !== 'QUESTION') setShowWinnerModal(true); 
+                        if (!wasShortcut) setShowWinnerModal(true); 
                         playSuccess();
                         setQuizState(prev => ({ ...prev, active: true, student: wonItem })); 
                         if (settings.removeStudent) setStudents(prev => prev.filter(s => s !== wonItem));
@@ -614,33 +606,64 @@
                 }
             };
 
+            // --- LOGIC: QUAY QUÀ BÍ ẨN (NÂNG CẤP HIỆU ỨNG SLOT MACHINE) ---
             const openAndSpinGift = () => {
                 if (giftState.active) return;
+                
                 const targetIndex = getWeightedRandomGift();
                 const sliceAngle = 360 / SPECIAL_GIFTS.length;
-                const spins = 5 * 360;
+                const spins = 8 * 360; // Tăng số vòng quay để kịch tính hơn
                 const centerAngle = targetIndex * sliceAngle + sliceAngle / 2;
                 
-                setGiftState(prev => {
-                    let targetMod = (270 - centerAngle) % 360;
-                    if (targetMod < 0) targetMod += 360;
-                    const randomOffset = (Math.random() - 0.5) * (sliceAngle * 0.7); 
-                    const currentMod = prev.rotation % 360;
-                    let diff = targetMod - currentMod;
-                    if (diff < 0) diff += 360;
-                    const finalRotation = prev.rotation + spins + diff + randomOffset;
-                    return { active: true, isSpinning: true, rotation: finalRotation, winner: null };
-                });
+                // Tính toán góc dừng cuối cùng
+                let targetMod = (270 - centerAngle) % 360;
+                if (targetMod < 0) targetMod += 360;
+                const randomOffset = (Math.random() - 0.5) * (sliceAngle * 0.7); 
+                const currentMod = giftState.rotation % 360;
+                let diff = targetMod - currentMod;
+                if (diff < 0) diff += 360;
+                const finalRot = giftState.rotation + spins + diff + randomOffset;
                 
-                let ticks = 0;
-                const tickInterval = setInterval(() => {
-                    if (ticks < 20) { playTick(); ticks++; } else clearInterval(tickInterval);
-                }, 150);
+                setGiftState({ active: true, isSpinning: true, rotation: finalRot, winner: null, currentTickText: 'ĐANG XÁO TRỘN...' });
+                
+                // HOẠT ẢNH CHỮ VÀ ÂM THANH (Chạy song song với CSS Transform)
+                let startTime = Date.now();
+                const spinDuration = 5500; // Thời gian quay dài 5.5s
+                let timeoutId;
+
+                const animateSpin = () => {
+                    const elapsed = Date.now() - startTime;
+                    if (elapsed < spinDuration) {
+                        // Cập nhật chữ liên tục
+                        const randomGift = SPECIAL_GIFTS[Math.floor(Math.random() * SPECIAL_GIFTS.length)].short;
+                        setGiftState(prev => ({ ...prev, currentTickText: randomGift }));
+
+                        // Âm thanh tích tắc cơ học
+                        playTone(300 + Math.random() * 100, 'square', 0.02);
+
+                        // Tính gia tốc (Delay tăng dần theo hàm mũ -> Chậm dần ở cuối)
+                        const progress = elapsed / spinDuration;
+                        const nextDelay = 20 + Math.pow(progress, 4) * 600; 
+                        
+                        timeoutId = setTimeout(animateSpin, nextDelay);
+                    } else {
+                        // Kết thúc quay chữ
+                        setGiftState(prev => ({ ...prev, currentTickText: SPECIAL_GIFTS[targetIndex].short }));
+                    }
+                };
+
+                setTimeout(() => { animateSpin(); }, 50); // Delay siêu nhỏ để React render Modal ra trước
 
                 setTimeout(() => {
-                    clearInterval(tickInterval); playSuccess();
-                    setGiftState(prev => ({ ...prev, isSpinning: false, winner: SPECIAL_GIFTS[targetIndex] }));
-                }, 4000);
+                    clearTimeout(timeoutId);
+                    playSuccess();
+                    setGiftState(prev => ({ 
+                        ...prev, 
+                        isSpinning: false, 
+                        winner: SPECIAL_GIFTS[targetIndex],
+                        currentTickText: SPECIAL_GIFTS[targetIndex].short 
+                    }));
+                }, spinDuration + 600); // Đợi CSS dừng hẳn mới hiện Popup Win
             };
 
             const getCardClasses = () => {
@@ -661,7 +684,6 @@
 
                         <div className="bg-white p-6 md:p-8 rounded-3xl shadow-2xl w-full max-w-5xl animate-fade-in relative z-10 border-4 border-white/50 backdrop-blur-md flex flex-col md:flex-row gap-8 max-h-[95vh] overflow-y-auto custom-scrollbar">
                             
-                            {/* CỘT TRÁI: FORM NHẬP LIỆU */}
                             <div id="setup-form-container" className="flex-1 flex flex-col gap-4 text-left border-b md:border-b-0 md:border-r-2 border-gray-100 pb-8 md:pb-0 md:pr-8 transition-all duration-300 rounded-xl">
                                 <div className="text-center">
                                     <div className="text-6xl mb-2 animate-bounce">🎡</div>
@@ -697,7 +719,6 @@
                                         className="w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-green-100 file:text-green-700 hover:file:bg-green-200 cursor-pointer" />
                                 </div>
 
-                                {/* NÚT LƯU VÀO THƯ VIỆN TỔNG HỢP */}
                                 <button onClick={handleSaveLesson} className="mt-2 text-sm font-bold text-indigo-700 bg-indigo-50 border-2 border-indigo-200 px-4 py-3 rounded-xl hover:bg-indigo-100 flex items-center justify-center gap-2 w-full transition-colors shadow-sm">
                                     <span>💾</span> LƯU BÀI NÀY VÀO THƯ VIỆN SƠ ĐỒ CÂY
                                 </button>
@@ -715,7 +736,6 @@
                                 )}
                             </div>
 
-                            {/* CỘT PHẢI: SƠ ĐỒ THƯ VIỆN HÌNH CÂY */}
                             <div className="flex-1 flex flex-col bg-gray-50 rounded-2xl border-2 border-gray-200 p-5 overflow-hidden">
                                 <div className="flex justify-between items-center mb-4 border-b-2 border-blue-200 pb-3">
                                     <h3 className="font-black text-xl text-blue-800 flex items-center gap-2">
@@ -776,7 +796,28 @@
                     theme === 'nguvan' ? 'bg-[#f4e8d1] text-[#4a3b2c]' : 'bg-blue-50 text-blue-900'
                 }`}>
                     
-                    {/* HEADER TỰ ĐỘNG ẨN/HIỆN */}
+                    {showShortcuts && (
+                        <div className="fixed inset-0 z-[100] bg-black/80 flex items-center justify-center p-4 animate-fade-in" onClick={() => setShowShortcuts(false)}>
+                            <div className="bg-white text-black p-8 rounded-2xl max-w-md w-full shadow-2xl transform scale-105" onClick={e => e.stopPropagation()}>
+                                <h2 className="text-2xl font-black mb-4 border-b-2 border-gray-200 pb-2 flex items-center gap-2">
+                                    <span>⌨️</span> Bảng Phím Tắt
+                                </h2>
+                                <ul className="space-y-4 text-lg font-bold text-gray-700">
+                                    <li className="flex items-center gap-3"><kbd className="bg-gray-200 border border-gray-400 shadow-sm px-3 py-1 rounded text-blue-700">F</kbd> Mở / Tắt Toàn màn hình</li>
+                                    <li className="flex items-center gap-3"><kbd className="bg-gray-200 border border-gray-400 shadow-sm px-3 py-1 rounded text-blue-700">D</kbd> Ẩn / Hiện Bảng điều khiển</li>
+                                    <li className="flex items-center gap-3"><kbd className="bg-gray-200 border border-gray-400 shadow-sm px-3 py-1 rounded text-blue-700">R</kbd> Quay số / Bốc câu hỏi nhanh</li>
+                                    <li className="flex items-center gap-3"><kbd className="bg-gray-200 border border-gray-400 shadow-sm px-3 py-1 rounded text-blue-700">Q</kbd> Mở / Đóng Quà Bí Ẩn</li>
+                                    <li className="flex items-center gap-3">
+                                        <kbd className="bg-gray-200 border border-gray-400 shadow-sm px-3 py-1 rounded text-blue-700">1</kbd> - <kbd className="bg-gray-200 border border-gray-400 shadow-sm px-3 py-1 rounded text-blue-700">5</kbd> Bấm giờ đếm ngược (phút)
+                                    </li>
+                                </ul>
+                                <button onClick={() => setShowShortcuts(false)} className="mt-6 w-full bg-blue-600 hover:bg-blue-700 text-white py-3 rounded-xl font-black transition-colors">
+                                    Đã hiểu
+                                </button>
+                            </div>
+                        </div>
+                    )}
+
                     <div className="fixed top-0 left-0 right-0 z-50 group">
                         <div className="absolute top-0 left-0 right-0 h-8 bg-transparent z-50" />
                         <header className={`absolute top-0 w-full transition-transform duration-300 transform -translate-y-[calc(100%-4px)] group-hover:translate-y-0 shadow-lg flex justify-between items-center px-4 py-2 z-40 ${
@@ -788,7 +829,10 @@
                                     ⬅ Menu
                                 </button>
                                 <button onClick={() => setShowSidebar(!showSidebar)} className="bg-black/20 hover:bg-black/40 text-white px-3 py-1.5 rounded-lg text-sm font-bold flex items-center gap-2 shadow-sm transition-all">
-                                    {showSidebar ? '👁️ Ẩn Bảng ĐK' : '⚙️ Hiện Bảng ĐK (Phím D)'}
+                                    {showSidebar ? '👁️ Ẩn Bảng ĐK' : '⚙️ Hiện Bảng ĐK'}
+                                </button>
+                                <button onClick={() => setShowShortcuts(true)} className="bg-black/20 hover:bg-black/40 text-white px-3 py-1.5 rounded-lg text-sm font-bold flex items-center gap-2 shadow-sm transition-all">
+                                    ⌨️ Phím tắt
                                 </button>
                                 <div className="hidden md:block border-l pl-3 ml-2 border-white/30">
                                     <h1 className="text-lg font-black tracking-wide">VÒNG QUAY NGẪU NHIÊN</h1>
@@ -817,85 +861,101 @@
                         </div>
                     )}
 
-                    {/* BODY CHÍNH */}
                     <main className={`flex-1 flex w-full h-full relative overflow-hidden ${showSidebar ? 'flex-col md:flex-row p-4 pt-10 gap-6' : 'flex-col p-0 m-0 bg-black'}`}>
                         
-                        {/* CỘT TRÁI: BẢNG ĐIỀU KHIỂN */}
                         {showSidebar && (
-                        <aside className={`w-full md:w-80 flex flex-col gap-4 ${getCardClasses()} p-4 rounded-xl z-10 overflow-y-auto max-h-[90vh] shadow-2xl border-4`}>
-                            <h2 className="text-xl font-bold mb-2 border-b pb-2">Bảng Điều Khiển</h2>
+                        <aside className={`w-full md:w-80 flex flex-col gap-3 ${getCardClasses()} p-4 rounded-xl z-10 overflow-y-auto max-h-[90vh] shadow-2xl border-4 custom-scrollbar`}>
+                            <h2 className="text-xl font-black mb-1 border-b-2 border-gray-200 pb-2">Bảng Điều Khiển</h2>
                             
-                            <div className="flex flex-col gap-2 mb-3">
-                                <label className="font-semibold text-sm">Chủ đề bài học:</label>
+                            <div className="flex flex-col gap-1">
+                                <label className="font-bold text-sm text-gray-600">Chủ đề bài học:</label>
                                 <input type="text" value={topic} onChange={e => setTopic(e.target.value)}
-                                    className={`font-roboto p-2 rounded w-full outline-none font-bold border ${theme==='hologram'?'bg-gray-700 text-cyan-300 border-cyan-700':'bg-gray-100 text-blue-700'}`} />
+                                    className={`font-roboto p-2 rounded w-full outline-none font-bold border ${theme==='hologram'?'bg-gray-700 text-cyan-300 border-cyan-700':'bg-gray-100 text-blue-700 border-gray-300'}`} />
                             </div>
 
-                            <div className="flex flex-col gap-2">
-                                <label className="font-semibold text-sm">Chế độ chơi:</label>
+                            <div className="flex flex-col gap-1">
+                                <label className="font-bold text-sm text-gray-600">Chế độ chơi:</label>
                                 <select value={mode} onChange={e => setMode(e.target.value)}
-                                    className={`font-roboto p-2 rounded w-full outline-none border ${theme==='hologram'?'bg-gray-700 text-cyan-300 border-cyan-700':'bg-gray-100 text-black'}`}>
+                                    className={`font-roboto p-2 rounded w-full outline-none border font-bold ${theme==='hologram'?'bg-gray-700 text-cyan-300 border-cyan-700':'bg-blue-50 text-blue-800 border-blue-200'}`}>
                                     <option value="STUDENT">👨‍🎓 Gọi Tên Học Sinh</option>
                                     <option value="QUESTION">❓ Trả Lời Câu Hỏi</option>
                                     <option value="REWARD">🎁 Nhận Phần Thưởng</option>
                                 </select>
                             </div>
 
-                            {mode === 'STUDENT' || mode === 'QUESTION' ? (
-                                <div className="flex flex-col gap-2 mt-2">
-                                    <label className="font-semibold text-sm">Danh sách Lớp ({students.length}):</label>
-                                    <textarea value={students.join('\n')} onChange={e => setStudents(e.target.value.split('\n').filter(s => s.trim()))}
-                                        className={`font-roboto w-full p-2 rounded h-32 text-sm outline-none border ${theme==='hologram'?'bg-gray-700 text-white border-cyan-700':'bg-gray-50 text-black border-gray-300'}`} />
-                                </div>
-                            ) : (
-                                <div className="flex flex-col gap-2 mt-2">
-                                    <label className="font-semibold text-sm">Phần thưởng ({rewards.length}):</label>
-                                    <textarea value={rewards.join('\n')} onChange={e => setRewards(e.target.value.split('\n').filter(s => s.trim()))}
-                                        className={`font-roboto w-full p-2 rounded h-32 text-sm outline-none border ${theme==='hologram'?'bg-gray-700 text-white border-cyan-700':'bg-gray-50 text-black border-gray-300'}`} />
-                                </div>
-                            )}
+                            <details className="bg-white/60 p-2 rounded-lg border border-gray-300 group shadow-sm transition-all" open={mode === 'STUDENT'}>
+                                <summary className="font-bold text-sm cursor-pointer flex justify-between items-center select-none text-blue-800">
+                                    <span>👨‍🎓 Danh sách Lớp ({students.length})</span>
+                                    <span className="transform transition-transform duration-200 opacity-50 group-open:rotate-90">▶</span>
+                                </summary>
+                                <textarea value={students.join('\n')} onChange={e => setStudents(e.target.value.split('\n').filter(s => s.trim()))}
+                                    className="font-roboto w-full p-2 mt-2 rounded h-24 text-sm outline-none border bg-gray-50 text-black border-gray-300" />
+                            </details>
 
-                            {/* Khối tải nhanh bằng Excel nếu đang chơi dở */}
-                            <div className="flex flex-col gap-2 mt-2">
-                                <label className="font-semibold text-sm">Tải thêm từ Excel (Offline):</label>
-                                <input type="file" accept=".xlsx, .xls" onChange={handleExcelUpload} 
-                                        className="w-full text-xs file:py-1 file:px-2 file:rounded file:border-0 file:bg-green-100 file:text-green-700" />
-                            </div>
+                            <details className="bg-white/60 p-2 rounded-lg border border-gray-300 group shadow-sm transition-all" open={mode === 'REWARD'}>
+                                <summary className="font-bold text-sm cursor-pointer flex justify-between items-center select-none text-yellow-700">
+                                    <span>🎁 Phần thưởng ({rewards.length})</span>
+                                    <span className="transform transition-transform duration-200 opacity-50 group-open:rotate-90">▶</span>
+                                </summary>
+                                <textarea value={rewards.join('\n')} onChange={e => setRewards(e.target.value.split('\n').filter(s => s.trim()))}
+                                    className="font-roboto w-full p-2 mt-2 rounded h-24 text-sm outline-none border bg-yellow-50 text-black border-yellow-200" />
+                            </details>
 
-                            <div className="mt-4 border-t pt-4 flex flex-col gap-3">
-                                <label className="flex items-center gap-2 text-sm cursor-pointer font-bold bg-yellow-100 p-2 rounded-lg border border-yellow-300">
-                                    <input type="checkbox" checked={settings.questionFirst} onChange={e => setSettings({...settings, questionFirst: e.target.checked})} className="w-4 h-4 text-blue-600"/>
-                                    <span className="text-blue-900">Hiện Câu hỏi trước khi Quay tên</span>
-                                </label>
-                                <label className="flex items-center gap-2 text-sm cursor-pointer font-bold">
-                                    <input type="checkbox" checked={settings.removeStudent} onChange={e => setSettings({...settings, removeStudent: e.target.checked})} />
-                                    Xóa học sinh sau khi gọi
-                                </label>
-                                <label className="flex items-center gap-2 text-sm cursor-pointer font-bold">
-                                    <input type="checkbox" checked={settings.removeQuestion} onChange={e => setSettings({...settings, removeQuestion: e.target.checked})} />
-                                    Xóa câu hỏi đã dùng
-                                </label>
-                                <label className="flex flex-col gap-1 text-sm font-bold">
-                                    Tốc độ quay:
-                                    <input type="range" min="1" max="5" value={settings.speed} onChange={e => setSettings({...settings, speed: e.target.value})} />
-                                </label>
-                                <label className="flex flex-col gap-1 text-sm mt-2 font-bold">
-                                    Giao diện:
-                                    <select value={theme} onChange={e => setTheme(e.target.value)} className={`font-roboto p-1 rounded border ${theme==='hologram'?'bg-gray-700 text-cyan-300 border-cyan-700':'bg-white text-black border-gray-300'}`}>
-                                        <option value="hoathinh">Hoạt hình (Sinh động)</option>
-                                        <option value="toigian">Tối giản (Chuyên nghiệp)</option>
-                                        <option value="nguvan">Ngữ Văn (Cổ điển)</option>
-                                        <option value="hologram">Hologram (Công nghệ)</option>
-                                    </select>
-                                </label>
-                            </div>
+                            <details className="bg-white/60 p-2 rounded-lg border border-gray-300 group shadow-sm transition-all" open={mode === 'QUESTION'}>
+                                <summary className="font-bold text-sm cursor-pointer flex justify-between items-center select-none text-green-700">
+                                    <span>❓ Ngân hàng câu hỏi ({questions.length})</span>
+                                    <span className="transform transition-transform duration-200 opacity-50 group-open:rotate-90">▶</span>
+                                </summary>
+                                <div className="mt-2 flex flex-col gap-2">
+                                    <textarea onBlur={e => handleImportQuestions(e.target.value)} placeholder="Dán văn bản thủ công vào đây (Click ra ngoài để lưu)..."
+                                        className="font-roboto w-full p-2 rounded h-16 text-xs outline-none border bg-green-50 text-black border-green-200" />
+                                    
+                                    <div className="border-t border-dashed border-green-300 pt-2">
+                                        <label className="font-bold text-xs text-green-800 block mb-1">Tải lên từ Tệp Excel (.xlsx):</label>
+                                        <input type="file" accept=".xlsx, .xls" onChange={handleExcelUpload} 
+                                            className="w-full text-xs file:py-1 file:px-2 file:rounded file:border-0 file:bg-green-200 file:text-green-800 file:font-bold file:cursor-pointer cursor-pointer" />
+                                    </div>
+                                </div>
+                            </details>
+
+                            <details className="bg-white/60 p-2 rounded-lg border border-gray-300 group shadow-sm transition-all mt-1" open={false}>
+                                <summary className="font-bold text-sm cursor-pointer flex justify-between items-center select-none text-gray-700">
+                                    <span>⚙️ Tùy chọn Nâng cao</span>
+                                    <span className="transform transition-transform duration-200 opacity-50 group-open:rotate-90">▶</span>
+                                </summary>
+                                <div className="mt-3 flex flex-col gap-3">
+                                    <label className="flex items-center gap-2 text-sm cursor-pointer font-bold bg-yellow-100 p-2 rounded-lg border border-yellow-300">
+                                        <input type="checkbox" checked={settings.questionFirst} onChange={e => setSettings({...settings, questionFirst: e.target.checked})} className="w-4 h-4 text-blue-600"/>
+                                        <span className="text-blue-900 leading-tight">Hiện Câu hỏi trước khi Quay tên</span>
+                                    </label>
+                                    <label className="flex items-center gap-2 text-sm cursor-pointer font-bold">
+                                        <input type="checkbox" checked={settings.removeStudent} onChange={e => setSettings({...settings, removeStudent: e.target.checked})} />
+                                        Xóa học sinh sau khi gọi
+                                    </label>
+                                    <label className="flex items-center gap-2 text-sm cursor-pointer font-bold">
+                                        <input type="checkbox" checked={settings.removeQuestion} onChange={e => setSettings({...settings, removeQuestion: e.target.checked})} />
+                                        Xóa câu hỏi đã dùng
+                                    </label>
+                                    <label className="flex flex-col gap-1 text-sm font-bold">
+                                        Tốc độ quay:
+                                        <input type="range" min="1" max="5" value={settings.speed} onChange={e => setSettings({...settings, speed: e.target.value})} />
+                                    </label>
+                                    <label className="flex flex-col gap-1 text-sm font-bold">
+                                        Giao diện:
+                                        <select value={theme} onChange={e => setTheme(e.target.value)} className="font-roboto p-1 rounded border bg-white text-black border-gray-300">
+                                            <option value="hoathinh">Hoạt hình (Sinh động)</option>
+                                            <option value="toigian">Tối giản (Chuyên nghiệp)</option>
+                                            <option value="nguvan">Ngữ Văn (Cổ điển)</option>
+                                            <option value="hologram">Hologram (Công nghệ)</option>
+                                        </select>
+                                    </label>
+                                </div>
+                            </details>
                         </aside>
                         )}
 
-                        {/* CỘT PHẢI: KHÔNG GIAN HIỂN THỊ TRÒ CHƠI */}
                         <section className={`flex-1 flex flex-col items-center justify-center relative ${showSidebar ? '' : 'w-full h-full'}`}>
                             
-                            {/* GIAO DIỆN VÒNG QUAY */}
                             <div className={`relative flex flex-col items-center ${quizState.active ? 'hidden' : 'flex'}`}>
                                 <div className="absolute top-[-20px] z-20">
                                     <div className="w-0 h-0 border-l-[15px] border-l-transparent border-r-[15px] border-r-transparent border-t-[30px] border-t-red-500 drop-shadow-lg"></div>
@@ -930,7 +990,6 @@
                                     </svg>
                                 </div>
 
-                                {/* NÚT ĐIỀU KHIỂN CHÍNH */}
                                 {mode === 'QUESTION' && settings.questionFirst ? (
                                     <button id="btn-boc-cau-hoi" onClick={drawQuestionFirst} disabled={isSpinning || questions.length === 0}
                                         className={`mt-8 px-12 py-4 rounded-full text-2xl font-black text-white transform transition hover:scale-105 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg ${
@@ -938,7 +997,7 @@
                                         theme === 'nguvan' ? 'bg-[#8b5a2b] hover:bg-[#6b4226]' :
                                         'bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700'
                                         }`}>
-                                        BỐC CÂU HỎI (Phím R)
+                                        BỐC CÂU HỎI
                                     </button>
                                 ) : (
                                     <button id="btn-quay-ngay" onClick={handleMainSpinClick} disabled={isSpinning || currentItems.length === 0}
@@ -947,15 +1006,13 @@
                                         theme === 'nguvan' ? 'bg-[#8b5a2b] hover:bg-[#6b4226]' :
                                         'bg-gradient-to-r from-green-400 to-blue-500 hover:from-green-500 hover:to-blue-600'
                                         }`}>
-                                        {isSpinning ? 'ĐANG QUAY...' : 'QUAY NGAY (Phím R)'}
+                                        {isSpinning ? 'ĐANG QUAY...' : 'QUAY NGAY'}
                                     </button>
                                 )}
                             </div>
 
-                            {/* GIAO DIỆN TRẢ LỜI CÂU HỎI (QUIZ) */}
                             {quizState.active && quizState.question && (
                                 showSidebar ? (
-                                /* --- UI KHI MỞ BẢNG ĐIỀU KHIỂN (THU GỌN) --- */
                                 <div className={`w-full max-w-4xl p-8 rounded-2xl flex flex-col animate-fade-in ${getCardClasses()} relative`}>
                                     <div className="flex justify-between items-center mb-6">
                                         <div className="flex items-center gap-3">
@@ -990,7 +1047,7 @@
                                         {!quizState.student && (
                                             <div className="absolute inset-0 flex items-center justify-center z-20 pointer-events-none">
                                                 <button id="btn-quay-nguoi" onClick={handleSpinForPendingQuestion} className="pointer-events-auto bg-yellow-400 hover:bg-yellow-300 text-black font-black px-8 py-3 rounded-full text-2xl shadow-xl border-4 border-white animate-bounce transition-transform">
-                                                    🎡 QUAY CHỌN NGƯỜI (Phím R)
+                                                    🎡 QUAY CHỌN NGƯỜI
                                                 </button>
                                             </div>
                                         )}
@@ -1012,7 +1069,7 @@
                                                 <div className="flex flex-col sm:flex-row gap-4 mt-6 w-full justify-center">
                                                     <button id="btn-quay-qua" onClick={openAndSpinGift}
                                                         className={`flex-1 bg-yellow-500 text-yellow-900 font-black rounded-full hover:bg-yellow-400 shadow-lg px-8 py-3 text-xl border-4 border-yellow-300 transition-transform hover:scale-105 active:scale-95`}>
-                                                        🎁 QUAY QUÀ (Phím Q)
+                                                        🎁 QUAY QUÀ
                                                     </button>
                                                     <button onClick={() => nextQuestion(quizState.student, quizState.streak + 1)}
                                                         className={`flex-1 bg-blue-600 text-white font-black rounded-full hover:bg-blue-500 shadow-lg px-8 py-3 text-xl transition-transform hover:scale-105 active:scale-95`}>
@@ -1029,11 +1086,9 @@
                                     )}
                                 </div>
                                 ) : (
-                                /* --- UI KHI ẨN BẢNG ĐIỀU KHIỂN (FULLSCREEN) --- */
                                 <div className="w-full h-full flex flex-col absolute inset-0 z-40 bg-black text-white animate-fade-in">
                                     
                                     <div className={`w-full flex flex-col transition-all duration-500 ease-in-out ${quizState.status ? 'h-[50vh]' : 'h-screen'}`}>
-                                        {/* Header 1 hàng (chiếm khoảng 6vh) */}
                                         <div className="flex justify-between items-center px-6 py-2 bg-gray-900 border-b border-gray-700 shadow-md z-10 h-[8vh]">
                                             <div className="text-[2.5vh] font-bold text-cyan-400 flex items-center gap-3">
                                                 👨‍🎓 <span className="text-white opacity-70 font-normal">Người chơi:</span> {quizState.student || "Đang chờ quay tên..."}
@@ -1041,7 +1096,6 @@
                                             <div className="text-[2.5vh] font-black text-orange-400">🔥 Chuỗi đúng: {quizState.streak}</div>
                                         </div>
 
-                                        {/* Khung Câu Hỏi sát mép trên, mép trái */}
                                         <div className={`w-full flex flex-col md:flex-row items-start justify-start px-6 bg-gray-900 transition-all duration-500 overflow-y-auto custom-scrollbar ${quizState.status ? 'h-[15vh] py-2' : 'h-[33vh] pt-6 pb-2 border-b border-gray-800'}`}>
                                             {quizState.question.img && (
                                                 <img src={quizState.question.img} className="max-h-full max-w-[30%] object-contain rounded-2xl shadow-xl border-2 border-gray-700 mr-6" onError={(e) => { e.target.style.display = 'none' }}/>
@@ -1051,7 +1105,6 @@
                                             </div>
                                         </div>
 
-                                        {/* Khối Đáp Án Quizizz - Căn sát mép trái */}
                                         <div className={`w-full bg-[#0a0a0a] relative transition-all duration-500 ${quizState.status ? 'flex-1 grid grid-cols-2 px-4 py-2 gap-4' : 'flex-1 grid grid-cols-2 px-8 py-6 pb-[20vh] gap-8'}`}>
                                             {quizState.displayOptions.map((opt, idx) => {
                                                 const labels = ['A', 'B', 'C', 'D'];
@@ -1074,7 +1127,6 @@
                                                 )
                                             })}
 
-                                            {/* OVERLAY TÍNH NĂNG (Hẹn Giờ & Thông Báo Quay Mới) */}
                                             {!quizState.status && (
                                                 <div className="absolute bottom-0 left-0 w-full px-8 pb-8 flex justify-between items-end pointer-events-none z-30">
                                                     <div className="pointer-events-auto flex items-end">
@@ -1092,7 +1144,7 @@
                                                     {!quizState.student && (
                                                         <div className="pointer-events-auto mr-8 mb-4">
                                                             <button id="btn-quay-nguoi" onClick={handleSpinForPendingQuestion} className="bg-yellow-400 hover:bg-yellow-300 text-black font-black px-12 py-5 rounded-full text-[4vh] shadow-[0_0_40px_rgba(234,179,8,0.6)] border-[6px] border-white animate-bounce transition-transform">
-                                                                🎡 QUAY CHỌN NGƯỜI (Phím R)
+                                                                🎡 QUAY CHỌN NGƯỜI
                                                             </button>
                                                         </div>
                                                     )}
@@ -1101,7 +1153,6 @@
                                         </div>
                                     </div>
 
-                                    {/* NỬA DƯỚI: GIẢI THÍCH */}
                                     {quizState.status && (
                                         <div className="h-[50vh] w-full bg-[#111] flex flex-col items-center p-6 border-t-[6px] border-blue-600 animate-fade-in relative z-20 shadow-[0_-15px_30px_rgba(0,0,0,0.4)]">
                                             <div className="flex items-center gap-4 mb-2">
@@ -1130,7 +1181,7 @@
                                                 <div className="flex flex-col sm:flex-row gap-8 w-full max-w-5xl justify-center">
                                                 <button id="btn-quay-qua" onClick={openAndSpinGift}
                                                     className="flex-1 bg-yellow-500 text-yellow-900 font-black rounded-full hover:bg-yellow-400 shadow-[0_0_40px_rgba(234,179,8,0.4)] px-8 py-4 text-[3vh] border-4 border-yellow-300 transition-transform hover:scale-105 active:scale-95">
-                                                    🎁 QUAY QUÀ (Phím Q)
+                                                    🎁 QUAY QUÀ
                                                 </button>
                                                 <button onClick={() => nextQuestion(quizState.student, quizState.streak + 1)}
                                                     className="flex-1 bg-blue-600 text-white font-black rounded-full hover:bg-blue-500 shadow-[0_0_40px_rgba(37,99,235,0.4)] px-8 py-4 text-[3vh] transition-transform hover:scale-105 active:scale-95 border-2 border-blue-400">
@@ -1152,20 +1203,34 @@
                         </section>
                     </main>
 
-                    {/* OVERLAY: VÒNG QUAY QUÀ BÍ ẨN (Bật qua phím Q) */}
                     {giftState.active && (
                         <div className="fixed inset-0 z-[60] bg-black/95 flex flex-col items-center justify-center p-4 animate-fade-in">
-                            <h2 className="text-[5vh] font-black text-yellow-400 mb-8 drop-shadow-[0_0_20px_rgba(250,204,21,0.5)] uppercase tracking-widest">
+                            <h2 className="text-[5vh] font-black text-yellow-400 mb-6 drop-shadow-[0_0_20px_rgba(250,204,21,0.5)] uppercase tracking-widest">
                                 🎁 Vòng Quay Bí Ẩn 🎁
                             </h2>
                             
                             <div className="relative flex flex-col items-center">
-                                <div className="absolute top-[-25px] z-20">
+                                {/* Màn hình LED Slot Machine */}
+                                <div className="mb-6 bg-[#111] border-4 border-yellow-500 rounded-xl px-8 py-3 shadow-[0_0_20px_rgba(250,204,21,0.3)] min-w-[280px] text-center relative overflow-hidden">
+                                    <div className={`text-[3.5vh] font-black uppercase tracking-wider ${giftState.isSpinning ? 'text-white animate-pulse' : 'text-yellow-400 drop-shadow-[0_0_10px_rgba(250,204,21,0.8)]'}`}>
+                                        {giftState.currentTickText}
+                                    </div>
+                                    <div className="absolute top-0 left-0 w-full h-1/2 bg-white/5 pointer-events-none"></div>
+                                </div>
+
+                                <div className="absolute top-[85px] z-20">
                                     <div className="w-0 h-0 border-l-[20px] border-l-transparent border-r-[20px] border-r-transparent border-t-[40px] border-t-yellow-300 drop-shadow-lg"></div>
                                 </div>
 
-                                <div className="rounded-full overflow-hidden border-[12px] border-yellow-400 shadow-[0_0_80px_rgba(250,204,21,0.6)] transition-transform duration-[4000ms] ease-out"
-                                    style={{ width: 'min(70vh, 700px)', height: 'min(70vh, 700px)', transform: `rotate(${giftState.rotation}deg)` }}>
+                                <div className="rounded-full overflow-hidden border-[12px] border-yellow-400 shadow-[0_0_80px_rgba(250,204,21,0.6)]"
+                                    style={{ 
+                                        width: 'min(65vh, 650px)', 
+                                        height: 'min(65vh, 650px)', 
+                                        transform: `rotate(${giftState.rotation}deg)`,
+                                        transitionProperty: 'transform',
+                                        transitionDuration: '5500ms',
+                                        transitionTimingFunction: 'cubic-bezier(0.1, 0.9, 0.1, 1)' 
+                                    }}>
                                     <svg viewBox="0 0 100 100" className="w-full h-full font-roboto">
                                         {SPECIAL_GIFTS.map((item, index) => {
                                             const slice = 360 / SPECIAL_GIFTS.length;
@@ -1200,9 +1265,9 @@
                                         <p className="text-[5vh] font-black text-white drop-shadow-lg leading-tight mb-10 px-8">
                                             {giftState.winner.text}
                                         </p>
-                                        <button id="btn-dong-qua" onClick={() => setGiftState({ active: false, isSpinning: false, rotation: 0, winner: null })}
+                                        <button id="btn-dong-qua" onClick={() => setGiftState({ active: false, isSpinning: false, rotation: 0, winner: null, currentTickText: '???' })}
                                             className="px-20 py-6 bg-white text-yellow-700 rounded-full font-black hover:bg-gray-100 hover:scale-105 transition-transform text-[4vh] shadow-2xl uppercase border-4 border-yellow-200">
-                                            Tuyệt Vời! (Phím Q)
+                                            Tuyệt Vời!
                                         </button>
                                     </div>
                                 </div>
@@ -1210,7 +1275,6 @@
                         </div>
                     )}
 
-                    {/* POPUP KẾT QUẢ VÒNG QUAY CHÍNH */}
                     {showWinnerModal && (
                         <div className="fixed inset-0 bg-black/80 backdrop-blur-md z-50 flex items-center justify-center p-4">
                         <div className={`p-12 rounded-[40px] text-center transform scale-110 animate-pop flex flex-col items-center max-w-2xl w-full border-4 shadow-2xl ${getCardClasses()}`}>
@@ -1229,7 +1293,6 @@
                         </div>
                     )}
 
-                    {/* MÀN HÌNH CHÚC MỪNG KHI HOÀN THÀNH HẾT CÂU HỎI */}
                     {quizState.status === 'DONE' && (
                         <div className="fixed inset-0 bg-black/95 z-50 flex flex-col items-center justify-center p-4 overflow-hidden">
                         {[...Array(60)].map((_, i) => (
