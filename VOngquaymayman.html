@@ -1,0 +1,1278 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Vòng Quay Học Tập - Thầy Lực</title>
+    
+    <!-- Tải Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Tải React và ReactDOM -->
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    
+    <!-- Tải Babel để biên dịch JSX trình duyệt -->
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+    <!-- TẢI THƯ VIỆN XỬ LÝ EXCEL (SheetJS) -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+
+    <!-- CSS chung cho hoạt ảnh và phông chữ -->
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Roboto:wght@700;900&display=swap');
+        
+        body { margin: 0; padding: 0; overflow: hidden; background-color: #000; }
+        
+        .font-roboto { font-family: 'Roboto', sans-serif !important; font-weight: 700; }
+        
+        .custom-scrollbar::-webkit-scrollbar { width: 8px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: #222; border-radius: 10px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #555; border-radius: 10px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #777; }
+
+        @keyframes firework { 
+            0% { transform: translate(0, 0) scale(1); opacity: 1; } 
+            100% { transform: translate(var(--dx), var(--dy)) scale(0); opacity: 0; } 
+        }
+        .animate-firework { animation: firework 1s ease-out forwards; }
+        .animate-firework-infinite { animation: firework 1.5s ease-out infinite; }
+        
+        @keyframes pop { 
+            0% { transform: scale(0.8); opacity: 0; } 
+            100% { transform: scale(1); opacity: 1; } 
+        }
+        .animate-pop { animation: pop 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards; }
+        
+        @keyframes fade-in { 
+            0% { opacity: 0; transform: translateY(20px); } 
+            100% { opacity: 1; transform: translateY(0); } 
+        }
+        .animate-fade-in { animation: fade-in 0.5s ease-out forwards; }
+        
+        @keyframes bounce-in { 
+            0% { transform: scale(0); } 
+            50% { transform: scale(1.1); } 
+            100% { transform: scale(1); } 
+        }
+        .animate-bounce-in { animation: bounce-in 0.5s cubic-bezier(0.8, 0, 0.2, 1); }
+
+        details > summary { list-style: none; }
+        details > summary::-webkit-details-marker { display: none; }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect, useRef, useMemo } = React;
+
+        // --- TIỆN ÍCH ÂM THANH (MARIO 8-BIT) ---
+        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        const playTone = (frequency, type, duration) => {
+            if (audioCtx.state === 'suspended') audioCtx.resume();
+            const oscillator = audioCtx.createOscillator();
+            const gainNode = audioCtx.createGain();
+            oscillator.type = type;
+            oscillator.frequency.setValueAtTime(frequency, audioCtx.currentTime);
+            // Decay cực nhanh tạo cảm giác điện tử 8-bit
+            gainNode.gain.setValueAtTime(0.1, audioCtx.currentTime);
+            gainNode.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + duration);
+            oscillator.connect(gainNode);
+            gainNode.connect(audioCtx.destination);
+            oscillator.start();
+            oscillator.stop(audioCtx.currentTime + duration);
+        };
+
+        const playTick = () => playTone(800, 'sine', 0.05);
+        
+        // Âm thanh Mario Ăn Đồng Xu (B5 -> E6)
+        const playSuccess = () => {
+            playTone(987.77, 'square', 0.1); 
+            setTimeout(() => playTone(1318.51, 'square', 0.4), 100); 
+        };
+        
+        // Âm thanh Mario Mất Mạng/Game Over (F4 -> E4 -> D4 -> C4)
+        const playFail = () => {
+            playTone(349.23, 'square', 0.1);
+            setTimeout(() => playTone(329.63, 'square', 0.1), 100);
+            setTimeout(() => playTone(293.66, 'square', 0.1), 200);
+            setTimeout(() => playTone(261.63, 'square', 0.3), 300);
+        };
+        
+        const playTimeUp = () => {
+            playTone(600, 'square', 0.2);
+            setTimeout(() => playTone(800, 'square', 0.5), 200);
+        }
+
+        // --- MÀU SẮC ĐÁP ÁN QUIZIZZ ---
+        // Sử dụng box-shadow để tạo nút 3D không bị xô lệch layout khi bấm
+        const QUIZIZZ_COLORS = [
+            'bg-[#2D70AE] shadow-[0_6px_0_#1A4B77] hover:bg-[#3482C9] active:shadow-[0_0px_0_#1A4B77] active:translate-y-[6px] text-white', 
+            'bg-[#2D9DA6] shadow-[0_6px_0_#1A6B72] hover:bg-[#34B4BE] active:shadow-[0_0px_0_#1A6B72] active:translate-y-[6px] text-white', 
+            'bg-[#EFA929] shadow-[0_6px_0_#B87F1A] hover:bg-[#FFB936] active:shadow-[0_0px_0_#B87F1A] active:translate-y-[6px] text-white', 
+            'bg-[#D5546D] shadow-[0_6px_0_#9A384B] hover:bg-[#F0617D] active:shadow-[0_0px_0_#9A384B] active:translate-y-[6px] text-white'  
+        ];
+
+        // --- DỮ LIỆU MẶC ĐỊNH ---
+        const CUTE_ANIMALS = ["Mèo", "Gấu", "Thỏ", "Cún", "Sóc", "Ong", "Én", "Voi", "Khỉ", "Rùa", "Hươu", "Cáo"];
+        const CUTE_ADJ = ["Thông Thái", "Chăm Chỉ", "Lanh Lợi", "Cần Cù", "Siêng Năng", "Học Giỏi", "Tự Tin", "Dũng Cảm", "Trí Tuệ", "Sáng Tạo", "Cẩn Thận", "Ngoan Ngoãn"];
+        const DEFAULT_STUDENTS = Array.from({length: 48}, (_, i) => `${i + 1}. ${CUTE_ANIMALS[i % CUTE_ANIMALS.length]} ${CUTE_ADJ[i % CUTE_ADJ.length]}`);
+        const DEFAULT_REWARDS = ["👏 Một tràng pháo tay", "🎁 Hộp quà bí mật", "⭐ Được 10 điểm miệng", "🍬 Một viên kẹo", "📝 Miễn bài tập về nhà"];
+        const DEFAULT_QUESTIONS = [
+            { q: "Nghiệm của phương trình $2x + 4 = 0$ là bao nhiêu?", options: [{text: "$x = -2$", isCorrect: true}, {text: "$x = 2$", isCorrect: false}, {text: "$x = 0$", isCorrect: false}, {text: "$x = 4$", isCorrect: false}], img: "", exp: "Ta có: $2x = -4 \\Rightarrow x = -2$." },
+            { q: "Diện tích hình tròn có bán kính $R$ được tính bằng công thức nào?", options: [{text: "$S = \\pi R^2$", isCorrect: true}, {text: "$S = \\pi R$", isCorrect: false}, {text: "$S = 2\\pi R$", isCorrect: false}, {text: "$S = \\frac{4}{3}\\pi R^3$", isCorrect: false}], img: "https://upload.wikimedia.org/wikipedia/commons/thumb/a/a0/Circle_-_black_simple.svg/220px-Circle_-_black_simple.svg.png", exp: "Công thức chuẩn: Diện tích $S = \\pi R^2$, trong khi chu vi là $C = 2\\pi R$." },
+            { q: "Tính giá trị của biểu thức $A = \\sqrt{16} + \\sqrt{9}$", options: [{text: "$A = 7$", isCorrect: true}, {text: "$A = 5$", isCorrect: false}, {text: "$A = 25$", isCorrect: false}, {text: "$A = 12$", isCorrect: false}], img: "", exp: "Vì $\\sqrt{16} = 4$ và $\\sqrt{9} = 3$. Nên $A = 4 + 3 = 7$." }
+        ];
+
+        const COLORS = ['#FF6B6B', '#4ECDC4', '#45B7D1', '#FFA07A', '#98D8C8', '#F06292', '#FFD54F', '#81C784', '#BA68C8'];
+
+        // --- CẤU HÌNH QUÀ BÍ ẨN ---
+        const SPECIAL_GIFTS = [
+            { short: "1 Đ. Toán", text: "1 điểm cộng môn Toán", weight: 50 }, 
+            { short: "2 Đ. Toán", text: "2 điểm cộng môn Toán", weight: 10 }, 
+            { short: "3 Đ. Toán", text: "3 điểm cộng môn Toán", weight: 100 / 3 }, 
+            { short: "Miễn Tử", text: "Phiếu 'Kim Bài Miễn Tử': Đặc quyền được miễn kiểm tra miệng hoặc bài cũ cho 1 lần bất kỳ trong tương lai.", weight: 20 / 21 },
+            { short: "Gieo Đau", text: "Voucher 'Gieo Rắc Nỗi Đau': Được quyền chỉ định ngay một đứa bạn thân lên bảng trả bài tiếp theo.", weight: 20 / 21 },
+            { short: "Thiên Tài", text: "Bằng Khen 'Thiên Tài': Giáo viên trao giấy chứng nhận 'IQ vô cực'.", weight: 20 / 21 },
+            { short: "Pháo Tay", text: "Tràng Pháo Tay VIP: Yêu cầu cả lớp đứng dậy, vỗ tay đúng 3 nhịp và đồng thanh hô to: 'Quá đỉnh!'.", weight: 20 / 21 },
+            { short: "Ghế Nóng", text: "Đặc Quyền 'Ghế Nóng': Thích ngồi vị trí nào cũng được, người khác sẽ đổi chỗ cho mình.", weight: 20 / 21 },
+            { short: "Đại Sứ", text: "Chức Vụ 'Đại Sứ': Trở thành 'Đại sứ nhắc bài' – được cấp phép nhắc bài hợp pháp cho 1 bạn khác trong lần kiểm tra miệng tới (giới hạn 1 câu).", weight: 20 / 21 },
+            { short: "Động Viên", text: "Gói 'Động Viên Tinh Thần': Nhận được một cái bắt tay thật chặt, kèm theo ánh mắt tự hào, rưng rưng cảm động từ giáo viên kéo dài trong đúng 5 giây không chớp mắt.", weight: 20 / 21 },
+        ];
+
+        const getWeightedRandomGift = () => {
+            const totalWeight = SPECIAL_GIFTS.reduce((acc, gift) => acc + gift.weight, 0);
+            const rand = Math.random() * totalWeight;
+            let sum = 0;
+            for (let i = 0; i < SPECIAL_GIFTS.length; i++) {
+                sum += SPECIAL_GIFTS[i].weight;
+                if (rand <= sum) return i;
+            }
+            return 0;
+        };
+
+        // --- HÀM TẢI DỮ LIỆU TỪ GOOGLE SHEET ---
+        const fetchSheetData = async (inputStr) => {
+            let sheetId = inputStr.trim();
+            const match = sheetId.match(/\/d\/([a-zA-Z0-9-_]+)/);
+            if (match && match[1]) sheetId = match[1];
+
+            const url = `https://docs.google.com/spreadsheets/d/${sheetId}/gviz/tq?tqx=out:json`;
+            const res = await fetch(url);
+            if (!res.ok) throw new Error("Network error");
+            const text = await res.text();
+            
+            const matchData = text.match(/google\.visualization\.Query\.setResponse\(([\s\S\w]+)\)/);
+            if (!matchData) throw new Error("Invalid format");
+            const data = JSON.parse(matchData[1]);
+
+            const newBank = [];
+            data.table.rows.forEach(row => {
+                if (row.c && row.c[0] && row.c[0].v) {
+                    const q = row.c[0]?.v ? String(row.c[0].v) : "";
+                    const correctOpt = row.c[1]?.v ? String(row.c[1].v) : "";
+                    const w1 = row.c[2]?.v ? String(row.c[2].v) : "";
+                    const w2 = row.c[3]?.v ? String(row.c[3].v) : "";
+                    const w3 = row.c[4]?.v ? String(row.c[4].v) : "";
+                    const img = row.c[5]?.v ? String(row.c[5].v).trim() : "";
+                    const exp = row.c[6]?.v ? String(row.c[6].v) : "";
+                    
+                    if (q.toLowerCase() !== 'câu hỏi' && q.toLowerCase() !== 'question') {
+                        const options = [
+                            { text: correctOpt, isCorrect: true },
+                            { text: w1, isCorrect: false },
+                            { text: w2, isCorrect: false },
+                            { text: w3, isCorrect: false }
+                        ].filter(o => o.text.trim() !== "");
+                        
+                        newBank.push({ q, options, img, exp });
+                    }
+                }
+            });
+            return newBank;
+        };
+
+        // --- COMPONENT RENDER TOÁN HỌC (KATEX) ---
+        const MathText = ({ text, isKatexLoaded }) => {
+            if (!text) return null;
+            const parts = text.split('$');
+            return (
+                <span>
+                    {parts.map((part, index) => {
+                        if (index % 2 === 1) {
+                            if (isKatexLoaded && window.katex) {
+                                try {
+                                    const html = window.katex.renderToString(part, { throwOnError: false });
+                                    return <span key={index} dangerouslySetInnerHTML={{ __html: html }} />;
+                                } catch (e) {
+                                    return <span key={index} className="text-red-500">${part}$</span>;
+                                }
+                            }
+                            return <span key={index} className="italic">${part}$</span>;
+                        }
+                        return <span key={index}>{part}</span>;
+                    })}
+                </span>
+            );
+        };
+
+        // --- COMPONENT CHÍNH ---
+        function App() {
+            const [isKatexLoaded, setIsKatexLoaded] = useState(false);
+
+            useEffect(() => {
+                if (document.getElementById('katex-css')) { setIsKatexLoaded(true); return; }
+                const link = document.createElement('link');
+                link.id = 'katex-css'; link.rel = 'stylesheet'; link.href = 'https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.css';
+                document.head.appendChild(link);
+                const script = document.createElement('script');
+                script.src = 'https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.js';
+                script.async = true; script.onload = () => setIsKatexLoaded(true);
+                document.head.appendChild(script);
+            }, []);
+
+            const [screen, setScreen] = useState('SETUP');
+            const [mode, setMode] = useState('STUDENT');
+            const [theme, setTheme] = useState('hoathinh'); 
+            
+            const [students, setStudents] = useState(() => JSON.parse(localStorage.getItem('vq_students')) || DEFAULT_STUDENTS);
+            const [rewards, setRewards] = useState(() => JSON.parse(localStorage.getItem('vq_rewards')) || DEFAULT_REWARDS);
+            const [questions, setQuestions] = useState(() => JSON.parse(localStorage.getItem('vq_questions')) || DEFAULT_QUESTIONS);
+            const [topic, setTopic] = useState(() => localStorage.getItem('vq_topic') || 'CHINH PHỤC TOÁN HỌC');
+            
+            const [savedLessons, setSavedLessons] = useState(() => JSON.parse(localStorage.getItem('vq_saved_lessons')) || []);
+
+            const [settings, setSettings] = useState({ removeStudent: false, removeQuestion: false, speed: 3, questionFirst: false });
+            const [sheetInput, setSheetInput] = useState('');
+            const [isFetchingSheet, setIsFetchingSheet] = useState(false);
+            const [showSidebar, setShowSidebar] = useState(true);
+
+            const [isSpinning, setIsSpinning] = useState(false);
+            const [rotation, setRotation] = useState(0);
+            const [winner, setWinner] = useState(null);
+            const [showWinnerModal, setShowWinnerModal] = useState(false);
+            const [quizState, setQuizState] = useState({ active: false, student: null, question: null, displayOptions: [], selectedOptIndex: null, streak: 0, status: null });
+            
+            const [giftState, setGiftState] = useState({ active: false, isSpinning: false, rotation: 0, winner: null });
+
+            const [timer, setTimer] = useState(0); 
+            const [timerActive, setTimerActive] = useState(false);
+
+            const isShortcutSpin = useRef(false);
+
+            // --- LƯU TRỮ DỮ LIỆU LÊN LOCALSTORAGE ---
+            useEffect(() => { localStorage.setItem('vq_saved_lessons', JSON.stringify(savedLessons)); }, [savedLessons]);
+            useEffect(() => { localStorage.setItem('vq_students', JSON.stringify(students)); }, [students]);
+            useEffect(() => { localStorage.setItem('vq_rewards', JSON.stringify(rewards)); }, [rewards]);
+            useEffect(() => { localStorage.setItem('vq_questions', JSON.stringify(questions)); }, [questions]);
+            useEffect(() => { localStorage.setItem('vq_topic', topic); }, [topic]);
+
+            // --- CHỨC NĂNG XỬ LÝ EXCEL (SHEETJS) ---
+            const downloadTemplate = () => {
+                if (!window.XLSX) return alert("Thư viện Excel đang tải, vui lòng thử lại sau giây lát.");
+                const ws_data = [
+                    ["Câu hỏi", "Đáp án ĐÚNG", "Đáp án Sai 1", "Đáp án Sai 2", "Đáp án Sai 3", "Link Ảnh (nếu có)", "Giải thích đáp án"],
+                    ["Phương trình $x^2 - 4 = 0$ có nghiệm là?", "$x= \\pm 2$", "$x=2$", "$x=-2$", "$x=4$", "", "Ta có $x^2 = 4 \\Rightarrow x = \\pm 2$"],
+                    ["Hướng dẫn: (Có thể xoá dòng này)", "Chỉ điền câu hỏi từ hàng 2 trở đi.", "Cột B luôn là đáp án đúng.", "Cột C,D,E là đáp án sai.", "Hệ thống sẽ tự xáo trộn đáp án.", "Ảnh & Giải thích có thể để trống.", "Hỗ trợ công thức Toán kẹp giữa dấu $"]
+                ];
+                const ws = XLSX.utils.aoa_to_sheet(ws_data);
+                ws['!cols'] = [{wch: 35}, {wch: 15}, {wch: 15}, {wch: 15}, {wch: 15}, {wch: 25}, {wch: 40}];
+                const wb = XLSX.utils.book_new();
+                XLSX.utils.book_append_sheet(wb, ws, "NganHangCauHoi");
+                XLSX.writeFile(wb, "FileMau_VongQuayCauHoi.xlsx");
+            };
+
+            const handleExcelUpload = (e) => {
+                const file = e.target.files[0];
+                if (!file) return;
+
+                const reader = new FileReader();
+                reader.onload = (evt) => {
+                    try {
+                        const data = evt.target.result;
+                        const workbook = XLSX.read(data, { type: 'binary' });
+                        const firstSheetName = workbook.SheetNames[0];
+                        const worksheet = workbook.Sheets[firstSheetName];
+                        const rows = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+                        
+                        const newBank = [];
+                        for (let i = 1; i < rows.length; i++) {
+                            const row = rows[i];
+                            if (row && row.length > 0 && row[0]) {
+                                const q = String(row[0] || "").trim();
+                                const correctOpt = String(row[1] || "").trim();
+                                const w1 = String(row[2] || "").trim();
+                                const w2 = String(row[3] || "").trim();
+                                const w3 = String(row[4] || "").trim();
+                                const img = String(row[5] || "").trim();
+                                const exp = String(row[6] || "").trim();
+
+                                if (q.toLowerCase().includes('hướng dẫn')) continue;
+
+                                const options = [
+                                    { text: correctOpt, isCorrect: true },
+                                    { text: w1, isCorrect: false },
+                                    { text: w2, isCorrect: false },
+                                    { text: w3, isCorrect: false }
+                                ].filter(o => o.text !== "");
+
+                                if (options.length > 0 && q !== "") {
+                                    newBank.push({ q, options, img, exp });
+                                }
+                            }
+                        }
+
+                        if (newBank.length > 0) {
+                            setQuestions(newBank);
+                            setSheetInput('');
+                            alert(`Đã tải thành công ${newBank.length} câu hỏi từ file Excel!`);
+                        } else {
+                            alert("Không tìm thấy dữ liệu hợp lệ trong file Excel. Vui lòng sử dụng File Mẫu.");
+                        }
+                    } catch (error) {
+                        console.error(error);
+                        alert("Lỗi đọc file Excel. Vui lòng kiểm tra lại định dạng.");
+                    }
+                    e.target.value = "";
+                };
+                reader.readAsBinaryString(file);
+            };
+
+            // --- LOGIC SƠ ĐỒ THƯ VIỆN BÀI HỌC (NÂNG CẤP) ---
+            const handleSaveLesson = () => {
+                if (!topic.trim()) return alert("Vui lòng nhập Chủ đề bài học trước khi lưu!");
+                if (!sheetInput.trim() && questions.length === 0) return alert("Vui lòng nhập ID Sheet hoặc tải lên file Excel trước khi lưu!");
+                
+                const category = prompt("Nhập tên thư mục (Ví dụ: Đại số 8, Hình học 9...):", "Thư mục chung");
+                if (category === null) return; 
+                
+                const newLesson = { 
+                    id: Date.now(), 
+                    category: category.trim() || "Thư mục chung", 
+                    topic: topic.trim(), 
+                    sheetId: sheetInput.trim(),
+                    questions: questions // Lưu trữ trực tiếp câu hỏi (Hỗ trợ file Excel offline)
+                };
+                setSavedLessons(prev => [...prev, newLesson]);
+                alert(`Đã lưu bài "${topic}" vào thư mục "${category}"!`);
+            };
+
+            const handleDeleteLesson = (id) => {
+                if(confirm("Bạn có chắc chắn muốn xóa bài học này khỏi thư viện?")) {
+                    setSavedLessons(prev => prev.filter(l => l.id !== id));
+                }
+            };
+
+            const loadLessonFromLibrary = (lesson) => {
+                setTopic(lesson.topic);
+                setSheetInput(lesson.sheetId || "");
+                if (lesson.questions && lesson.questions.length > 0) {
+                    setQuestions(lesson.questions);
+                } else if (!lesson.sheetId) {
+                    setQuestions([]);
+                }
+
+                // Hiệu ứng chớp sáng để báo hiệu
+                const setupForm = document.getElementById('setup-form-container');
+                if(setupForm) {
+                    setupForm.classList.add('scale-[1.01]', 'shadow-blue-500/50');
+                    setTimeout(() => setupForm.classList.remove('scale-[1.01]', 'shadow-blue-500/50'), 200);
+                }
+            };
+
+            // Sao lưu & Phục hồi Thư viện
+            const exportLibrary = () => {
+                if (savedLessons.length === 0) return alert("Thư viện đang trống!");
+                const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(savedLessons));
+                const downloadAnchorNode = document.createElement('a');
+                downloadAnchorNode.setAttribute("href", dataStr);
+                downloadAnchorNode.setAttribute("download", "ThuVien_VongQuayNganHang.json");
+                document.body.appendChild(downloadAnchorNode); 
+                downloadAnchorNode.click();
+                downloadAnchorNode.remove();
+            };
+
+            const importLibrary = (e) => {
+                const file = e.target.files[0];
+                if (!file) return;
+                const reader = new FileReader();
+                reader.onload = (evt) => {
+                    try {
+                        const importedLessons = JSON.parse(evt.target.result);
+                        if (Array.isArray(importedLessons)) {
+                            setSavedLessons(prev => {
+                                const existingIds = new Set(prev.map(l => l.id));
+                                const newLessons = importedLessons.filter(l => !existingIds.has(l.id));
+                                return [...prev, ...newLessons];
+                            });
+                            alert("Đã phục hồi thư viện thành công!");
+                        } else {
+                            alert("Định dạng file không hợp lệ.");
+                        }
+                    } catch(err) {
+                        alert("Lỗi đọc file. Vui lòng chọn đúng file JSON sao lưu.");
+                    }
+                    e.target.value = ""; 
+                };
+                reader.readAsText(file);
+            };
+
+            const groupedLessons = useMemo(() => {
+                return savedLessons.reduce((acc, lesson) => {
+                    if (!acc[lesson.category]) acc[lesson.category] = [];
+                    acc[lesson.category].push(lesson);
+                    return acc;
+                }, {});
+            }, [savedLessons]);
+
+            // --- LOGIC ĐỒNG HỒ ĐẾM NGƯỢC ---
+            useEffect(() => {
+                let interval = null;
+                if (timerActive && timer > 0) {
+                    interval = setInterval(() => setTimer(prev => prev - 1), 1000);
+                } else if (timer === 0 && timerActive) {
+                    setTimerActive(false);
+                    playTimeUp(); 
+                }
+                return () => clearInterval(interval);
+            }, [timerActive, timer]);
+
+            const formatTime = (secs) => {
+                const m = Math.floor(secs / 60);
+                const s = secs % 60;
+                return `${m}:${s < 10 ? '0' : ''}${s}`;
+            };
+
+            // --- PHÍM TẮT ---
+            useEffect(() => {
+                const handleKeyDown = (e) => {
+                    if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+                    
+                    if (['1', '2', '3', '4', '5'].includes(e.key)) {
+                        e.preventDefault();
+                        const mins = parseInt(e.key);
+                        setTimer(mins * 60);
+                        setTimerActive(true);
+                        return;
+                    }
+                    if (e.key.toLowerCase() === 'f') {
+                        e.preventDefault();
+                        if (!document.fullscreenElement) document.documentElement.requestFullscreen().catch(err => console.log(err));
+                        else if (document.exitFullscreen) document.exitFullscreen();
+                    }
+                    if (e.key.toLowerCase() === 'd') {
+                        e.preventDefault();
+                        setShowSidebar(prev => !prev);
+                    }
+                    if (e.key.toLowerCase() === 'q') {
+                        e.preventDefault();
+                        const btnQuayQua = document.getElementById('btn-quay-qua');
+                        const btnDongQua = document.getElementById('btn-dong-qua');
+                        if (btnDongQua) btnDongQua.click();
+                        else if (btnQuayQua) btnQuayQua.click();
+                    }
+                    if (e.key.toLowerCase() === 'r') {
+                        e.preventDefault();
+                        const btnQuayNguoi = document.getElementById('btn-quay-nguoi');
+                        const btnBocCauHoi = document.getElementById('btn-boc-cau-hoi');
+                        const btnQuayNgay = document.getElementById('btn-quay-ngay');
+                        if (btnQuayNguoi && !btnQuayNguoi.disabled) { isShortcutSpin.current = true; btnQuayNguoi.click(); } 
+                        else if (btnBocCauHoi && !btnBocCauHoi.disabled) btnBocCauHoi.click(); 
+                        else if (btnQuayNgay && !btnQuayNgay.disabled) { isShortcutSpin.current = true; btnQuayNgay.click(); }
+                    }
+                };
+                window.addEventListener('keydown', handleKeyDown);
+                return () => window.removeEventListener('keydown', handleKeyDown);
+            }, []);
+
+            // NÚT BẮT ĐẦU
+            const handleStartSetup = async () => {
+                if (!topic.trim()) return alert("Vui lòng nhập chủ đề bài học!");
+                
+                if (sheetInput.trim()) {
+                    setIsFetchingSheet(true);
+                    try {
+                        const newBank = await fetchSheetData(sheetInput);
+                        if (newBank.length > 0) { 
+                            setQuestions(newBank); 
+                            setScreen('MAIN'); 
+                            return; 
+                        } else {
+                            alert("Không tìm thấy câu hỏi nào trong Google Sheet.");
+                            return;
+                        }
+                    } catch (error) { 
+                        alert("Không thể tải dữ liệu. Hãy đảm bảo Sheet đã Share Public."); 
+                        return;
+                    } finally { 
+                        setIsFetchingSheet(false); 
+                    }
+                }
+                
+                if (questions.length > 0) {
+                    setScreen('MAIN');
+                } else {
+                    alert("Vui lòng tải câu hỏi từ Google Sheet hoặc Tệp Excel!");
+                }
+            };
+
+            const currentItems = useMemo(() => {
+                if (mode === 'REWARD') return rewards.length > 0 ? rewards : ["Chưa có phần thưởng"];
+                return students.length > 0 ? students : ["Chưa có học sinh"];
+            }, [mode, students, rewards]);
+
+            const triggerSpin = (onComplete) => {
+                if (isSpinning || currentItems.length === 0) return;
+                setIsSpinning(true); setWinner(null);
+                const spins = settings.speed * 5; 
+                const randomDegree = Math.floor(Math.random() * 360);
+                const newRotation = rotation + (spins * 360) + randomDegree;
+                setRotation(newRotation);
+                const sliceAngle = 360 / currentItems.length;
+                const actualRotation = newRotation % 360;
+                let winningIndex = Math.floor(((360 - actualRotation + 270) % 360) / sliceAngle) % currentItems.length;
+
+                let ticks = 0;
+                const tickInterval = setInterval(() => {
+                    if (ticks < 20) { playTick(); ticks++; } else clearInterval(tickInterval);
+                }, 150);
+
+                const wasShortcut = isShortcutSpin.current;
+                setTimeout(() => {
+                    clearInterval(tickInterval); setIsSpinning(false);
+                    const wonItem = currentItems[winningIndex]; 
+                    setWinner(wonItem);
+                    if (onComplete) onComplete(wonItem, wasShortcut);
+                    isShortcutSpin.current = false; 
+                }, 4000);
+            };
+
+            const handleMainSpinClick = () => {
+                setQuizState({ active: false, student: null, question: null, displayOptions: [], selectedOptIndex: null, streak: 0, status: null });
+                setTimeout(() => {
+                    triggerSpin((wonItem, wasShortcut) => {
+                        if (!wasShortcut && mode !== 'QUESTION') setShowWinnerModal(true); 
+                        playSuccess();
+                        if (mode === 'QUESTION') {
+                            startQuizMode(wonItem); 
+                            if (settings.removeStudent) setStudents(prev => prev.filter(s => s !== wonItem));
+                        } else {
+                            if (settings.removeStudent && mode === 'STUDENT') setStudents(prev => prev.filter(s => s !== wonItem));
+                        }
+                    });
+                }, 100);
+            };
+
+            const drawQuestionFirst = () => {
+                if (questions.length === 0) return alert("Ngân hàng câu hỏi đang trống!");
+                const randomIndex = Math.floor(Math.random() * questions.length);
+                const q = questions[randomIndex];
+                const shuffled = [...q.options].sort(() => Math.random() - 0.5);
+                setQuizState({ active: true, student: null, question: q, displayOptions: shuffled, selectedOptIndex: null, streak: 0, status: null });
+                setTimer(0); setTimerActive(false); 
+            };
+
+            const handleSpinForPendingQuestion = () => {
+                setQuizState(prev => ({ ...prev, active: false })); 
+                setTimeout(() => {
+                    triggerSpin((wonItem, wasShortcut) => {
+                        if (!wasShortcut && mode !== 'QUESTION') setShowWinnerModal(true); 
+                        playSuccess();
+                        setQuizState(prev => ({ ...prev, active: true, student: wonItem })); 
+                        if (settings.removeStudent) setStudents(prev => prev.filter(s => s !== wonItem));
+                    });
+                }, 100);
+            };
+
+            const startQuizMode = (studentName) => {
+                if (questions.length === 0) return alert("Ngân hàng câu hỏi đang trống!");
+                nextQuestion(studentName, 0);
+            };
+
+            const nextQuestion = (studentName, currentStreak) => {
+                if (questions.length === 0) { 
+                    setQuizState(prev => ({...prev, status: 'DONE'})); 
+                    playSuccess();
+                    setTimeout(playSuccess, 400); 
+                    return; 
+                }
+                const randomIndex = Math.floor(Math.random() * questions.length);
+                const q = questions[randomIndex];
+                const shuffled = [...q.options].sort(() => Math.random() - 0.5); 
+                setQuizState({ active: true, student: studentName, question: q, displayOptions: shuffled, selectedOptIndex: null, streak: currentStreak, status: null });
+                setTimer(0); setTimerActive(false); 
+            };
+
+            const handleAnswer = (optIndex, isCorrect) => {
+                setTimerActive(false); 
+                if (isCorrect) {
+                    playSuccess(); setQuizState(prev => ({ ...prev, status: 'CORRECT', selectedOptIndex: optIndex }));
+                    if (settings.removeQuestion) setQuestions(prev => prev.filter(q => q.q !== quizState.question.q));
+                } else {
+                    playFail(); setQuizState(prev => ({ ...prev, status: 'WRONG', selectedOptIndex: optIndex }));
+                }
+            };
+
+            const openAndSpinGift = () => {
+                if (giftState.active) return;
+                const targetIndex = getWeightedRandomGift();
+                const sliceAngle = 360 / SPECIAL_GIFTS.length;
+                const spins = 5 * 360;
+                const centerAngle = targetIndex * sliceAngle + sliceAngle / 2;
+                
+                setGiftState(prev => {
+                    let targetMod = (270 - centerAngle) % 360;
+                    if (targetMod < 0) targetMod += 360;
+                    const randomOffset = (Math.random() - 0.5) * (sliceAngle * 0.7); 
+                    const currentMod = prev.rotation % 360;
+                    let diff = targetMod - currentMod;
+                    if (diff < 0) diff += 360;
+                    const finalRotation = prev.rotation + spins + diff + randomOffset;
+                    return { active: true, isSpinning: true, rotation: finalRotation, winner: null };
+                });
+                
+                let ticks = 0;
+                const tickInterval = setInterval(() => {
+                    if (ticks < 20) { playTick(); ticks++; } else clearInterval(tickInterval);
+                }, 150);
+
+                setTimeout(() => {
+                    clearInterval(tickInterval); playSuccess();
+                    setGiftState(prev => ({ ...prev, isSpinning: false, winner: SPECIAL_GIFTS[targetIndex] }));
+                }, 4000);
+            };
+
+            const getCardClasses = () => {
+                switch (theme) {
+                    case 'toigian': return 'bg-white shadow-sm border border-gray-200';
+                    case 'hologram': return 'bg-gray-800 shadow-[0_0_15px_rgba(34,211,238,0.5)] border border-cyan-500';
+                    case 'nguvan': return 'bg-[#fffaf0] shadow-md border-2 border-[#8b5a2b]';
+                    case 'hoathinh': default: return 'bg-white shadow-xl rounded-2xl border-4 border-yellow-300';
+                }
+            };
+
+            // --- MÀN HÌNH SETUP ---
+            if (screen === 'SETUP') {
+                return (
+                    <div className="font-roboto min-h-screen bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center p-4 relative overflow-hidden">
+                        <div className="absolute top-[-10%] left-[-10%] w-96 h-96 bg-white/10 rounded-full blur-3xl pointer-events-none"></div>
+                        <div className="absolute bottom-[-10%] right-[-10%] w-96 h-96 bg-cyan-400/20 rounded-full blur-3xl pointer-events-none"></div>
+
+                        <div className="bg-white p-6 md:p-8 rounded-3xl shadow-2xl w-full max-w-5xl animate-fade-in relative z-10 border-4 border-white/50 backdrop-blur-md flex flex-col md:flex-row gap-8 max-h-[95vh] overflow-y-auto custom-scrollbar">
+                            
+                            {/* CỘT TRÁI: FORM NHẬP LIỆU */}
+                            <div id="setup-form-container" className="flex-1 flex flex-col gap-4 text-left border-b md:border-b-0 md:border-r-2 border-gray-100 pb-8 md:pb-0 md:pr-8 transition-all duration-300 rounded-xl">
+                                <div className="text-center">
+                                    <div className="text-6xl mb-2 animate-bounce">🎡</div>
+                                    <h1 className="text-3xl font-black text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-purple-600 mb-2">VÒNG QUAY HỌC TẬP</h1>
+                                </div>
+                                
+                                <div>
+                                    <label className="font-bold text-gray-700 block mb-1">📖 Chủ đề bài học:</label>
+                                    <input type="text" value={topic} onChange={e => setTopic(e.target.value)} placeholder="VD: Phương trình bậc 2..." 
+                                        className="font-roboto w-full p-3 border-2 border-gray-200 rounded-xl outline-none focus:border-blue-500 bg-gray-50 text-blue-900 text-lg transition-colors" />
+                                </div>
+
+                                <div className="bg-blue-50 p-4 rounded-xl border border-blue-100">
+                                    <label className="font-bold text-blue-800 block mb-2 flex justify-between items-center">
+                                        <span>🌐 Lấy dữ liệu từ Google Sheet:</span>
+                                    </label>
+                                    <input id="sheetInputText" type="text" value={sheetInput} onChange={e => setSheetInput(e.target.value)} placeholder="Dán Link hoặc ID Google Sheet..." 
+                                        className="font-roboto w-full p-3 border border-blue-200 rounded-lg outline-none focus:border-blue-500 bg-white transition-colors text-sm" />
+                                </div>
+
+                                <div className="flex items-center">
+                                    <div className="flex-1 border-t border-gray-200"></div>
+                                    <span className="px-3 text-gray-400 font-bold text-sm">HOẶC TẢI OFFLINE</span>
+                                    <div className="flex-1 border-t border-gray-200"></div>
+                                </div>
+
+                                <div className="bg-green-50 p-4 rounded-xl border border-green-100">
+                                    <label className="font-bold text-green-800 block mb-2 flex justify-between items-center">
+                                        <span>📁 Tải lên từ Tệp Excel (.xlsx):</span>
+                                        <button onClick={downloadTemplate} className="text-xs text-white bg-green-600 px-3 py-1.5 rounded-lg hover:bg-green-700 transition-colors shadow-sm">📥 Tải File Mẫu</button>
+                                    </label>
+                                    <input type="file" accept=".xlsx, .xls" onChange={handleExcelUpload} 
+                                        className="w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-green-100 file:text-green-700 hover:file:bg-green-200 cursor-pointer" />
+                                </div>
+
+                                {/* NÚT LƯU VÀO THƯ VIỆN TỔNG HỢP */}
+                                <button onClick={handleSaveLesson} className="mt-2 text-sm font-bold text-indigo-700 bg-indigo-50 border-2 border-indigo-200 px-4 py-3 rounded-xl hover:bg-indigo-100 flex items-center justify-center gap-2 w-full transition-colors shadow-sm">
+                                    <span>💾</span> LƯU BÀI NÀY VÀO THƯ VIỆN SƠ ĐỒ CÂY
+                                </button>
+
+                                <button onClick={handleStartSetup} disabled={isFetchingSheet} 
+                                    className="mt-2 w-full bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white font-black py-4 rounded-xl shadow-lg transform transition hover:-translate-y-1 active:scale-95 text-lg disabled:opacity-70 disabled:hover:translate-y-0"
+                                >
+                                    {isFetchingSheet ? '🔄 ĐANG TẢI DỮ LIỆU...' : '▶️ BẮT ĐẦU VÀO BÀI HỌC'}
+                                </button>
+                                
+                                {questions.length > 0 && (
+                                    <p className="text-center text-sm font-semibold text-gray-500">
+                                        (Đã có sẵn <span className="text-blue-600">{questions.length}</span> câu hỏi trong bộ nhớ tạm)
+                                    </p>
+                                )}
+                            </div>
+
+                            {/* CỘT PHẢI: SƠ ĐỒ THƯ VIỆN HÌNH CÂY */}
+                            <div className="flex-1 flex flex-col bg-gray-50 rounded-2xl border-2 border-gray-200 p-5 overflow-hidden">
+                                <div className="flex justify-between items-center mb-4 border-b-2 border-blue-200 pb-3">
+                                    <h3 className="font-black text-xl text-blue-800 flex items-center gap-2">
+                                        <span>📚</span> Thư Viện Bài Học
+                                    </h3>
+                                    <div className="flex gap-2">
+                                        <button onClick={exportLibrary} title="Sao lưu (Tải về máy)" className="text-xs font-bold bg-blue-100 text-blue-700 px-3 py-1.5 rounded-lg hover:bg-blue-200 shadow-sm transition-colors flex items-center gap-1">
+                                            ⬇️ Sao lưu
+                                        </button>
+                                        <label title="Phục hồi (Tải lên từ máy)" className="text-xs font-bold bg-green-100 text-green-700 px-3 py-1.5 rounded-lg hover:bg-green-200 cursor-pointer shadow-sm transition-colors flex items-center gap-1 m-0">
+                                            ⬆️ Phục hồi
+                                            <input type="file" accept=".json" onChange={importLibrary} className="hidden" />
+                                        </label>
+                                    </div>
+                                </div>
+                                
+                                <div className="flex-1 overflow-y-auto custom-scrollbar pr-2">
+                                    {Object.keys(groupedLessons).length === 0 ? (
+                                        <div className="text-gray-400 text-center italic mt-10 font-medium">
+                                            Chưa có bài học nào được lưu.<br/>Hãy thiết lập bài học và bấm nút <span className="text-indigo-500">"Lưu bài này"</span> bên trái.
+                                        </div>
+                                    ) : (
+                                        Object.keys(groupedLessons).map(cat => (
+                                            <details key={cat} open className="mb-4 group">
+                                                <summary className="font-bold text-lg cursor-pointer text-gray-800 hover:text-blue-600 flex items-center gap-2 select-none bg-white p-2 rounded-lg shadow-sm border border-gray-100 transition-colors">
+                                                    <span className="transform transition-transform duration-200 text-sm opacity-50 group-open:rotate-90">▶</span>
+                                                    📁 {cat}
+                                                </summary>
+                                                
+                                                <ul className="pl-6 mt-2 border-l-[3px] border-dashed border-gray-300 ml-4 flex flex-col gap-2 relative">
+                                                    {groupedLessons[cat].map(lesson => (
+                                                        <li key={lesson.id} className="relative flex items-center justify-between group/item py-1">
+                                                            <div className="absolute w-5 h-[3px] border-b-[3px] border-dashed border-gray-300 -left-6 top-1/2 transform -translate-y-1/2"></div>
+                                                            <button onClick={() => loadLessonFromLibrary(lesson)} className="text-left font-bold text-gray-600 hover:text-blue-600 transition-colors flex-1 ml-2 truncate hover:bg-blue-50 px-2 py-1 rounded">
+                                                                📄 {lesson.topic} {lesson.questions && lesson.questions.length > 0 ? <span className="text-xs text-green-500 ml-1">(Offline)</span> : <span className="text-xs text-blue-500 ml-1">(Link)</span>}
+                                                            </button>
+                                                            <button onClick={(e) => { e.stopPropagation(); handleDeleteLesson(lesson.id); }} className="opacity-0 group-hover/item:opacity-100 text-red-500 hover:text-white font-bold px-3 py-1 rounded-md hover:bg-red-500 transition-all text-xs ml-2 border border-red-200 shadow-sm">
+                                                                Xóa
+                                                            </button>
+                                                        </li>
+                                                    ))}
+                                                </ul>
+                                            </details>
+                                        ))
+                                    )}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                );
+            }
+
+            // --- MÀN HÌNH CHÍNH (MAIN) ---
+            return (
+                <div className={`font-roboto h-screen w-full flex flex-col overflow-hidden transition-colors duration-500 ${
+                    theme === 'hologram' ? 'bg-gray-900 text-cyan-400' : 
+                    theme === 'toigian' ? 'bg-gray-100 text-gray-800' :
+                    theme === 'nguvan' ? 'bg-[#f4e8d1] text-[#4a3b2c]' : 'bg-blue-50 text-blue-900'
+                }`}>
+                    
+                    {/* HEADER TỰ ĐỘNG ẨN/HIỆN */}
+                    <div className="fixed top-0 left-0 right-0 z-50 group">
+                        <div className="absolute top-0 left-0 right-0 h-8 bg-transparent z-50" />
+                        <header className={`absolute top-0 w-full transition-transform duration-300 transform -translate-y-[calc(100%-4px)] group-hover:translate-y-0 shadow-lg flex justify-between items-center px-4 py-2 z-40 ${
+                            theme === 'hologram' ? 'bg-gray-900 border-b border-cyan-500' : 
+                            theme === 'nguvan' ? 'bg-[#d2b48c]' : 'bg-gradient-to-r from-blue-500 to-purple-600'
+                        } text-white`}>
+                            <div className="flex items-center gap-3">
+                                <button onClick={() => setScreen('SETUP')} className="bg-black/20 hover:bg-black/40 text-white px-3 py-1.5 rounded-lg text-sm font-bold flex items-center gap-2 shadow-sm transition-all">
+                                    ⬅ Menu
+                                </button>
+                                <button onClick={() => setShowSidebar(!showSidebar)} className="bg-black/20 hover:bg-black/40 text-white px-3 py-1.5 rounded-lg text-sm font-bold flex items-center gap-2 shadow-sm transition-all">
+                                    {showSidebar ? '👁️ Ẩn Bảng ĐK' : '⚙️ Hiện Bảng ĐK (Phím D)'}
+                                </button>
+                                <div className="hidden md:block border-l pl-3 ml-2 border-white/30">
+                                    <h1 className="text-lg font-black tracking-wide">VÒNG QUAY NGẪU NHIÊN</h1>
+                                </div>
+                            </div>
+                            <div className="text-right text-xs font-bold opacity-90">
+                                <p className="mb-0.5">CĐ: <MathText text={topic} isKatexLoaded={isKatexLoaded}/></p>
+                                <p>GV: Vũ Tiến Lực</p>
+                            </div>
+                        </header>
+                        <div className="absolute top-0 left-1/2 transform -translate-x-1/2 bg-black/40 text-white text-[10px] px-4 py-1 rounded-b-lg font-bold tracking-widest opacity-100 group-hover:opacity-0 transition-opacity pointer-events-none z-30 shadow-md">
+                            ▼ MENU ▼
+                        </div>
+                    </div>
+
+                    {quizState.status === 'CORRECT' && (
+                        <div className="fixed inset-0 pointer-events-none z-50 flex items-center justify-center overflow-hidden">
+                            {[...Array(30)].map((_, i) => (
+                                <div key={i} className="absolute w-3 h-3 rounded-full animate-firework" 
+                                     style={{ backgroundColor: COLORS[i % COLORS.length], left: '50%', top: '50%', '--dx': `${(Math.random() - 0.5) * 500}px`, '--dy': `${(Math.random() - 0.5) * 500}px` }}>
+                                </div>
+                            ))}
+                            <div className="text-6xl font-black text-green-500 drop-shadow-[0_0_10px_white] animate-bounce">
+                                XUẤT SẮC! 🎉
+                            </div>
+                        </div>
+                    )}
+
+                    {/* BODY CHÍNH */}
+                    <main className={`flex-1 flex w-full h-full relative overflow-hidden ${showSidebar ? 'flex-col md:flex-row p-4 pt-10 gap-6' : 'flex-col p-0 m-0 bg-black'}`}>
+                        
+                        {/* CỘT TRÁI: BẢNG ĐIỀU KHIỂN */}
+                        {showSidebar && (
+                        <aside className={`w-full md:w-80 flex flex-col gap-4 ${getCardClasses()} p-4 rounded-xl z-10 overflow-y-auto max-h-[90vh] shadow-2xl border-4`}>
+                            <h2 className="text-xl font-bold mb-2 border-b pb-2">Bảng Điều Khiển</h2>
+                            
+                            <div className="flex flex-col gap-2 mb-3">
+                                <label className="font-semibold text-sm">Chủ đề bài học:</label>
+                                <input type="text" value={topic} onChange={e => setTopic(e.target.value)}
+                                    className={`font-roboto p-2 rounded w-full outline-none font-bold border ${theme==='hologram'?'bg-gray-700 text-cyan-300 border-cyan-700':'bg-gray-100 text-blue-700'}`} />
+                            </div>
+
+                            <div className="flex flex-col gap-2">
+                                <label className="font-semibold text-sm">Chế độ chơi:</label>
+                                <select value={mode} onChange={e => setMode(e.target.value)}
+                                    className={`font-roboto p-2 rounded w-full outline-none border ${theme==='hologram'?'bg-gray-700 text-cyan-300 border-cyan-700':'bg-gray-100 text-black'}`}>
+                                    <option value="STUDENT">👨‍🎓 Gọi Tên Học Sinh</option>
+                                    <option value="QUESTION">❓ Trả Lời Câu Hỏi</option>
+                                    <option value="REWARD">🎁 Nhận Phần Thưởng</option>
+                                </select>
+                            </div>
+
+                            {mode === 'STUDENT' || mode === 'QUESTION' ? (
+                                <div className="flex flex-col gap-2 mt-2">
+                                    <label className="font-semibold text-sm">Danh sách Lớp ({students.length}):</label>
+                                    <textarea value={students.join('\n')} onChange={e => setStudents(e.target.value.split('\n').filter(s => s.trim()))}
+                                        className={`font-roboto w-full p-2 rounded h-32 text-sm outline-none border ${theme==='hologram'?'bg-gray-700 text-white border-cyan-700':'bg-gray-50 text-black border-gray-300'}`} />
+                                </div>
+                            ) : (
+                                <div className="flex flex-col gap-2 mt-2">
+                                    <label className="font-semibold text-sm">Phần thưởng ({rewards.length}):</label>
+                                    <textarea value={rewards.join('\n')} onChange={e => setRewards(e.target.value.split('\n').filter(s => s.trim()))}
+                                        className={`font-roboto w-full p-2 rounded h-32 text-sm outline-none border ${theme==='hologram'?'bg-gray-700 text-white border-cyan-700':'bg-gray-50 text-black border-gray-300'}`} />
+                                </div>
+                            )}
+
+                            {/* Khối tải nhanh bằng Excel nếu đang chơi dở */}
+                            <div className="flex flex-col gap-2 mt-2">
+                                <label className="font-semibold text-sm">Tải thêm từ Excel (Offline):</label>
+                                <input type="file" accept=".xlsx, .xls" onChange={handleExcelUpload} 
+                                        className="w-full text-xs file:py-1 file:px-2 file:rounded file:border-0 file:bg-green-100 file:text-green-700" />
+                            </div>
+
+                            <div className="mt-4 border-t pt-4 flex flex-col gap-3">
+                                <label className="flex items-center gap-2 text-sm cursor-pointer font-bold bg-yellow-100 p-2 rounded-lg border border-yellow-300">
+                                    <input type="checkbox" checked={settings.questionFirst} onChange={e => setSettings({...settings, questionFirst: e.target.checked})} className="w-4 h-4 text-blue-600"/>
+                                    <span className="text-blue-900">Hiện Câu hỏi trước khi Quay tên</span>
+                                </label>
+                                <label className="flex items-center gap-2 text-sm cursor-pointer font-bold">
+                                    <input type="checkbox" checked={settings.removeStudent} onChange={e => setSettings({...settings, removeStudent: e.target.checked})} />
+                                    Xóa học sinh sau khi gọi
+                                </label>
+                                <label className="flex items-center gap-2 text-sm cursor-pointer font-bold">
+                                    <input type="checkbox" checked={settings.removeQuestion} onChange={e => setSettings({...settings, removeQuestion: e.target.checked})} />
+                                    Xóa câu hỏi đã dùng
+                                </label>
+                                <label className="flex flex-col gap-1 text-sm font-bold">
+                                    Tốc độ quay:
+                                    <input type="range" min="1" max="5" value={settings.speed} onChange={e => setSettings({...settings, speed: e.target.value})} />
+                                </label>
+                                <label className="flex flex-col gap-1 text-sm mt-2 font-bold">
+                                    Giao diện:
+                                    <select value={theme} onChange={e => setTheme(e.target.value)} className={`font-roboto p-1 rounded border ${theme==='hologram'?'bg-gray-700 text-cyan-300 border-cyan-700':'bg-white text-black border-gray-300'}`}>
+                                        <option value="hoathinh">Hoạt hình (Sinh động)</option>
+                                        <option value="toigian">Tối giản (Chuyên nghiệp)</option>
+                                        <option value="nguvan">Ngữ Văn (Cổ điển)</option>
+                                        <option value="hologram">Hologram (Công nghệ)</option>
+                                    </select>
+                                </label>
+                            </div>
+                        </aside>
+                        )}
+
+                        {/* CỘT PHẢI: KHÔNG GIAN HIỂN THỊ TRÒ CHƠI */}
+                        <section className={`flex-1 flex flex-col items-center justify-center relative ${showSidebar ? '' : 'w-full h-full'}`}>
+                            
+                            {/* GIAO DIỆN VÒNG QUAY */}
+                            <div className={`relative flex flex-col items-center ${quizState.active ? 'hidden' : 'flex'}`}>
+                                <div className="absolute top-[-20px] z-20">
+                                    <div className="w-0 h-0 border-l-[15px] border-l-transparent border-r-[15px] border-r-transparent border-t-[30px] border-t-red-500 drop-shadow-lg"></div>
+                                </div>
+
+                                <div className={`rounded-full overflow-hidden border-8 shadow-2xl transition-transform duration-[4000ms] ease-out ${
+                                    theme === 'hologram' ? 'border-cyan-500 shadow-[0_0_30px_cyan]' :
+                                    theme === 'nguvan' ? 'border-[#8b5a2b]' : 'border-white'
+                                    }`}
+                                    style={{ width: showSidebar ? 'min(80vw, 500px)' : 'min(90vh, 700px)', height: showSidebar ? 'min(80vw, 500px)' : 'min(90vh, 700px)', transform: `rotate(${rotation}deg)` }}>
+                                    <svg viewBox="0 0 100 100" className="w-full h-full font-roboto">
+                                        {currentItems.map((item, index) => {
+                                            const slice = 360 / currentItems.length;
+                                            const rotate = index * slice;
+                                            const x1 = 50 + 50 * Math.cos(Math.PI * (-90 + slice) / 180);
+                                            const y1 = 50 + 50 * Math.sin(Math.PI * (-90 + slice) / 180);
+                                            const largeArcFlag = slice > 180 ? 1 : 0;
+                                            const pathData = `M 50 50 L 50 0 A 50 50 0 ${largeArcFlag} 1 ${x1} ${y1} Z`;
+
+                                            return (
+                                                <g key={index} transform={`rotate(${rotate} 50 50)`}>
+                                                    <path d={pathData} fill={COLORS[index % COLORS.length]} stroke="rgba(0,0,0,0.1)" strokeWidth="0.5"/>
+                                                    <text x="50" y="20" transform={`rotate(${slice/2} 50 50)`} textAnchor="middle" alignmentBaseline="middle"
+                                                        fill="white" fontWeight="900" fontSize={currentItems.length > 15 ? "3" : "4"} style={{textShadow: '1px 1px 2px rgba(0,0,0,0.8)'}}>
+                                                        {item.length > 20 ? item.substring(0, 18) + '...' : item}
+                                                    </text>
+                                                </g>
+                                            );
+                                        })}
+                                        <circle cx="50" cy="50" r="10" fill="white" className="drop-shadow-lg" />
+                                        <circle cx="50" cy="50" r="8" fill={theme === 'hologram' ? '#22d3ee' : '#3b82f6'} />
+                                    </svg>
+                                </div>
+
+                                {/* NÚT ĐIỀU KHIỂN CHÍNH */}
+                                {mode === 'QUESTION' && settings.questionFirst ? (
+                                    <button id="btn-boc-cau-hoi" onClick={drawQuestionFirst} disabled={isSpinning || questions.length === 0}
+                                        className={`mt-8 px-12 py-4 rounded-full text-2xl font-black text-white transform transition hover:scale-105 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg ${
+                                        theme === 'hologram' ? 'bg-cyan-600 hover:bg-cyan-500 shadow-[0_0_20px_cyan]' :
+                                        theme === 'nguvan' ? 'bg-[#8b5a2b] hover:bg-[#6b4226]' :
+                                        'bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700'
+                                        }`}>
+                                        BỐC CÂU HỎI (Phím R)
+                                    </button>
+                                ) : (
+                                    <button id="btn-quay-ngay" onClick={handleMainSpinClick} disabled={isSpinning || currentItems.length === 0}
+                                        className={`mt-8 px-12 py-4 rounded-full text-2xl font-black text-white transform transition hover:scale-105 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg ${
+                                        theme === 'hologram' ? 'bg-cyan-600 hover:bg-cyan-500 shadow-[0_0_20px_cyan]' :
+                                        theme === 'nguvan' ? 'bg-[#8b5a2b] hover:bg-[#6b4226]' :
+                                        'bg-gradient-to-r from-green-400 to-blue-500 hover:from-green-500 hover:to-blue-600'
+                                        }`}>
+                                        {isSpinning ? 'ĐANG QUAY...' : 'QUAY NGAY (Phím R)'}
+                                    </button>
+                                )}
+                            </div>
+
+                            {/* GIAO DIỆN TRẢ LỜI CÂU HỎI (QUIZ) */}
+                            {quizState.active && quizState.question && (
+                                showSidebar ? (
+                                /* --- UI KHI MỞ BẢNG ĐIỀU KHIỂN (THU GỌN) --- */
+                                <div className={`w-full max-w-4xl p-8 rounded-2xl flex flex-col animate-fade-in ${getCardClasses()} relative`}>
+                                    <div className="flex justify-between items-center mb-6">
+                                        <div className="flex items-center gap-3">
+                                            <span className="text-4xl">👨‍🎓</span>
+                                            <div><p className="opacity-70 font-bold text-sm">Người chơi:</p><h2 className="font-black text-2xl">{quizState.student || "Đang chờ..."}</h2></div>
+                                        </div>
+                                        <div className="text-center">
+                                            <p className="opacity-70 font-bold text-sm">Chuỗi đúng</p><div className="font-black text-orange-500 text-3xl">🔥 {quizState.streak}</div>
+                                        </div>
+                                    </div>
+                                    {quizState.question.img && (<div className="flex justify-center mb-4"><img src={quizState.question.img} className="object-contain rounded-xl shadow-md max-h-64 border" onError={(e) => { e.target.style.display = 'none' }}/></div>)}
+                                    <div className={`rounded-xl font-bold p-6 mb-6 text-2xl ${theme==='hologram' ? 'bg-gray-900 border border-cyan-400' : 'bg-blue-50 text-blue-900'}`}>
+                                        <MathText text={quizState.question.q} isKatexLoaded={isKatexLoaded} />
+                                    </div>
+
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-lg relative mb-4">
+                                        {quizState.displayOptions.map((opt, idx) => {
+                                            const labels = ['A', 'B', 'C', 'D'];
+                                            let btnColor = QUIZIZZ_COLORS[idx % 4];
+                                            if (quizState.status) {
+                                                if (opt.isCorrect) btnColor = 'bg-[#22c55e] shadow-[0_6px_0_#16a34a] text-white scale-[1.02] z-10';
+                                                else if (quizState.selectedOptIndex === idx) btnColor = 'bg-[#ef4444] shadow-[0_6px_0_#b91c1c] text-white'; 
+                                                else btnColor = 'bg-gray-300 shadow-[0_6px_0_#9ca3af] text-gray-500 opacity-60'; 
+                                            }
+                                            return (
+                                                <button key={idx} disabled={quizState.status !== null || !quizState.student} onClick={() => handleAnswer(idx, opt.isCorrect)}
+                                                    className={`p-4 rounded-xl text-left transition-all duration-200 mb-2 ${btnColor}`}><span className="font-black mr-3">{labels[idx]}.</span><MathText text={opt.text} isKatexLoaded={isKatexLoaded} />
+                                                </button>
+                                            )
+                                        })}
+
+                                        {!quizState.student && (
+                                            <div className="absolute inset-0 flex items-center justify-center z-20 pointer-events-none">
+                                                <button id="btn-quay-nguoi" onClick={handleSpinForPendingQuestion} className="pointer-events-auto bg-yellow-400 hover:bg-yellow-300 text-black font-black px-8 py-3 rounded-full text-2xl shadow-xl border-4 border-white animate-bounce transition-transform">
+                                                    🎡 QUAY CHỌN NGƯỜI (Phím R)
+                                                </button>
+                                            </div>
+                                        )}
+                                    </div>
+
+                                    {quizState.status && (
+                                        <div className={`border-4 text-center mt-6 p-6 rounded-2xl animate-bounce-in ${quizState.status === 'CORRECT' ? 'bg-green-50 border-green-400' : 'bg-red-50 border-red-400'}`}>
+                                            <h3 className={`font-black text-3xl mb-2 ${quizState.status === 'CORRECT' ? 'text-green-600' : 'text-red-600'}`}>
+                                                {quizState.status === 'CORRECT' ? '🎉 CHÍNH XÁC!' : '😢 SAI RỒI!'}
+                                            </h3>
+                                            {quizState.question.exp && (
+                                                <div className={`text-left border p-4 mt-4 rounded-xl ${theme==='hologram' ? 'bg-gray-800 border-cyan-500 text-cyan-100' : 'bg-white border-gray-200 text-gray-800'}`}>
+                                                    <p className="font-black uppercase opacity-70 text-sm mb-2 flex items-center gap-2"><span>💡</span> Giải thích chi tiết:</p>
+                                                    <p className="whitespace-pre-wrap font-bold text-lg leading-relaxed"><MathText text={quizState.question.exp} isKatexLoaded={isKatexLoaded} /></p>
+                                                </div>
+                                            )}
+                                            
+                                            {quizState.status === 'CORRECT' ? (
+                                                <div className="flex flex-col sm:flex-row gap-4 mt-6 w-full justify-center">
+                                                    <button id="btn-quay-qua" onClick={openAndSpinGift}
+                                                        className={`flex-1 bg-yellow-500 text-yellow-900 font-black rounded-full hover:bg-yellow-400 shadow-lg px-8 py-3 text-xl border-4 border-yellow-300 transition-transform hover:scale-105 active:scale-95`}>
+                                                        🎁 QUAY QUÀ (Phím Q)
+                                                    </button>
+                                                    <button onClick={() => nextQuestion(quizState.student, quizState.streak + 1)}
+                                                        className={`flex-1 bg-blue-600 text-white font-black rounded-full hover:bg-blue-500 shadow-lg px-8 py-3 text-xl transition-transform hover:scale-105 active:scale-95`}>
+                                                        Tiếp tục (+1 Điểm 🔥)
+                                                    </button>
+                                                </div>
+                                            ) : (
+                                                <button onClick={() => setQuizState({ active: false, student: null, question: null, streak: 0, status: null })}
+                                                    className={`bg-gray-600 text-white font-black rounded-full hover:bg-gray-700 shadow-lg mt-6 px-8 py-3 text-xl transition-transform hover:scale-105 active:scale-95`}>
+                                                    Kết thúc lượt
+                                                </button>
+                                            )}
+                                        </div>
+                                    )}
+                                </div>
+                                ) : (
+                                /* --- UI KHI ẨN BẢNG ĐIỀU KHIỂN (FULLSCREEN) --- */
+                                <div className="w-full h-full flex flex-col absolute inset-0 z-40 bg-black text-white animate-fade-in">
+                                    
+                                    <div className={`w-full flex flex-col transition-all duration-500 ease-in-out ${quizState.status ? 'h-[50vh]' : 'h-screen'}`}>
+                                        {/* Header 1 hàng (chiếm khoảng 6vh) */}
+                                        <div className="flex justify-between items-center px-6 py-2 bg-gray-900 border-b border-gray-700 shadow-md z-10 h-[8vh]">
+                                            <div className="text-[2.5vh] font-bold text-cyan-400 flex items-center gap-3">
+                                                👨‍🎓 <span className="text-white opacity-70 font-normal">Người chơi:</span> {quizState.student || "Đang chờ quay tên..."}
+                                            </div>
+                                            <div className="text-[2.5vh] font-black text-orange-400">🔥 Chuỗi đúng: {quizState.streak}</div>
+                                        </div>
+
+                                        {/* Khung Câu Hỏi sát mép trên, mép trái */}
+                                        <div className={`w-full flex flex-col md:flex-row items-start justify-start px-6 bg-gray-900 transition-all duration-500 overflow-y-auto custom-scrollbar ${quizState.status ? 'h-[15vh] py-2' : 'h-[33vh] pt-6 pb-2 border-b border-gray-800'}`}>
+                                            {quizState.question.img && (
+                                                <img src={quizState.question.img} className="max-h-full max-w-[30%] object-contain rounded-2xl shadow-xl border-2 border-gray-700 mr-6" onError={(e) => { e.target.style.display = 'none' }}/>
+                                            )}
+                                            <div className={`font-black text-left w-full text-white drop-shadow-xl transition-all duration-500 leading-tight tracking-tight ${quizState.status ? 'text-[3vh] lg:text-[3.5vh]' : 'text-[4.5vh] lg:text-[6vh]'}`}>
+                                                <MathText text={quizState.question.q} isKatexLoaded={isKatexLoaded} />
+                                            </div>
+                                        </div>
+
+                                        {/* Khối Đáp Án Quizizz - Căn sát mép trái */}
+                                        <div className={`w-full bg-[#0a0a0a] relative transition-all duration-500 ${quizState.status ? 'flex-1 grid grid-cols-2 px-4 py-2 gap-4' : 'flex-1 grid grid-cols-2 px-8 py-6 pb-[20vh] gap-8'}`}>
+                                            {quizState.displayOptions.map((opt, idx) => {
+                                                const labels = ['A', 'B', 'C', 'D'];
+                                                let btnColor = QUIZIZZ_COLORS[idx % 4];
+                                                
+                                                if (quizState.status) {
+                                                    if (opt.isCorrect) btnColor = 'bg-[#22c55e] shadow-[0_6px_0_#16a34a,0_0_30px_rgba(34,197,94,0.6)] text-white scale-[1.02] z-10';
+                                                    else if (quizState.selectedOptIndex === idx) btnColor = 'bg-[#ef4444] shadow-[0_6px_0_#b91c1c] text-white'; 
+                                                    else btnColor = 'bg-[#222] shadow-[0_6px_0_#111] text-gray-600 opacity-40'; 
+                                                }
+
+                                                return (
+                                                    <button key={idx} disabled={quizState.status !== null || !quizState.student} onClick={() => handleAnswer(idx, opt.isCorrect)}
+                                                        className={`rounded-2xl flex items-center transition-all duration-200 group ${btnColor} ${quizState.status ? 'p-4 mb-2' : 'px-6 py-4 mb-2'}`}>
+                                                        <span className={`font-black opacity-90 group-hover:opacity-100 transition-opacity ${quizState.status ? 'text-[3vh] w-12' : 'text-[4vh] w-16'}`}>{labels[idx]}.</span>
+                                                        <div className={`font-bold text-left flex-1 tracking-tight leading-tight ${quizState.status ? 'text-[2.5vh] lg:text-[2.8vh]' : 'text-[3.5vh] lg:text-[4vh]'}`}>
+                                                            <MathText text={opt.text} isKatexLoaded={isKatexLoaded} />
+                                                        </div>
+                                                    </button>
+                                                )
+                                            })}
+
+                                            {/* OVERLAY TÍNH NĂNG (Hẹn Giờ & Thông Báo Quay Mới) */}
+                                            {!quizState.status && (
+                                                <div className="absolute bottom-0 left-0 w-full px-8 pb-8 flex justify-between items-end pointer-events-none z-30">
+                                                    <div className="pointer-events-auto flex items-end">
+                                                        {timer > 0 ? (
+                                                            <div className={`font-black text-[14vh] leading-none drop-shadow-[0_0_20px_rgba(0,0,0,1)] ${timer <= 10 ? 'text-red-500 animate-pulse' : 'text-yellow-400'}`}>
+                                                                {formatTime(timer)}
+                                                            </div>
+                                                        ) : (
+                                                            <div className="text-white/30 text-[2.5vh] font-bold pb-2">
+                                                            Phím tắt 1-5: Bấm phút suy nghĩ
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                    
+                                                    {!quizState.student && (
+                                                        <div className="pointer-events-auto mr-8 mb-4">
+                                                            <button id="btn-quay-nguoi" onClick={handleSpinForPendingQuestion} className="bg-yellow-400 hover:bg-yellow-300 text-black font-black px-12 py-5 rounded-full text-[4vh] shadow-[0_0_40px_rgba(234,179,8,0.6)] border-[6px] border-white animate-bounce transition-transform">
+                                                                🎡 QUAY CHỌN NGƯỜI (Phím R)
+                                                            </button>
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            )}
+                                        </div>
+                                    </div>
+
+                                    {/* NỬA DƯỚI: GIẢI THÍCH */}
+                                    {quizState.status && (
+                                        <div className="h-[50vh] w-full bg-[#111] flex flex-col items-center p-6 border-t-[6px] border-blue-600 animate-fade-in relative z-20 shadow-[0_-15px_30px_rgba(0,0,0,0.4)]">
+                                            <div className="flex items-center gap-4 mb-2">
+                                                <span className="text-[6vh] leading-none">{quizState.status === 'CORRECT' ? '🎉' : '😢'}</span>
+                                                <h3 className={`font-black text-[5vh] leading-none drop-shadow-lg ${quizState.status === 'CORRECT' ? 'text-green-400' : 'text-red-500'}`}>
+                                                    {quizState.status === 'CORRECT' ? 'CHÍNH XÁC!' : 'SAI RỒI!'}
+                                                </h3>
+                                            </div>
+                                            
+                                            <div className="flex-1 w-full max-w-7xl bg-[#1a1a1a] border-2 border-gray-700 rounded-3xl p-6 my-4 overflow-y-auto custom-scrollbar shadow-inner text-left">
+                                                {quizState.question.exp ? (
+                                                <>
+                                                    <p className="text-yellow-400 font-black text-[2.5vh] mb-2 flex items-center gap-3"><span>💡</span> GIẢI THÍCH CHI TIẾT:</p>
+                                                    <p className="text-[3.5vh] font-bold leading-tight whitespace-pre-wrap text-gray-100">
+                                                    <MathText text={quizState.question.exp} isKatexLoaded={isKatexLoaded} />
+                                                    </p>
+                                                </>
+                                                ) : (
+                                                <div className="h-full flex items-center justify-center">
+                                                    <p className="text-gray-500 italic text-[3vh]">Không có giải thích chi tiết cho câu hỏi này.</p>
+                                                </div>
+                                                )}
+                                            </div>
+                                            
+                                            {quizState.status === 'CORRECT' ? (
+                                                <div className="flex flex-col sm:flex-row gap-8 w-full max-w-5xl justify-center">
+                                                <button id="btn-quay-qua" onClick={openAndSpinGift}
+                                                    className="flex-1 bg-yellow-500 text-yellow-900 font-black rounded-full hover:bg-yellow-400 shadow-[0_0_40px_rgba(234,179,8,0.4)] px-8 py-4 text-[3vh] border-4 border-yellow-300 transition-transform hover:scale-105 active:scale-95">
+                                                    🎁 QUAY QUÀ (Phím Q)
+                                                </button>
+                                                <button onClick={() => nextQuestion(quizState.student, quizState.streak + 1)}
+                                                    className="flex-1 bg-blue-600 text-white font-black rounded-full hover:bg-blue-500 shadow-[0_0_40px_rgba(37,99,235,0.4)] px-8 py-4 text-[3vh] transition-transform hover:scale-105 active:scale-95 border-2 border-blue-400">
+                                                    Tiếp tục (+1 Điểm 🔥)
+                                                </button>
+                                                </div>
+                                            ) : (
+                                                <button onClick={() => setQuizState({ active: false, student: null, question: null, streak: 0, status: null })}
+                                                className="px-16 py-4 bg-gray-600 hover:bg-gray-500 text-white rounded-full text-[3.5vh] font-black shadow-lg transition-transform hover:scale-105 active:scale-95 border-2 border-gray-400">
+                                                ⏹ KẾT THÚC LƯỢT NÀY
+                                                </button>
+                                            )}
+                                        </div>
+                                    )}
+                                </div>
+                                )
+                            )}
+
+                        </section>
+                    </main>
+
+                    {/* OVERLAY: VÒNG QUAY QUÀ BÍ ẨN (Bật qua phím Q) */}
+                    {giftState.active && (
+                        <div className="fixed inset-0 z-[60] bg-black/95 flex flex-col items-center justify-center p-4 animate-fade-in">
+                            <h2 className="text-[5vh] font-black text-yellow-400 mb-8 drop-shadow-[0_0_20px_rgba(250,204,21,0.5)] uppercase tracking-widest">
+                                🎁 Vòng Quay Bí Ẩn 🎁
+                            </h2>
+                            
+                            <div className="relative flex flex-col items-center">
+                                <div className="absolute top-[-25px] z-20">
+                                    <div className="w-0 h-0 border-l-[20px] border-l-transparent border-r-[20px] border-r-transparent border-t-[40px] border-t-yellow-300 drop-shadow-lg"></div>
+                                </div>
+
+                                <div className="rounded-full overflow-hidden border-[12px] border-yellow-400 shadow-[0_0_80px_rgba(250,204,21,0.6)] transition-transform duration-[4000ms] ease-out"
+                                    style={{ width: 'min(70vh, 700px)', height: 'min(70vh, 700px)', transform: `rotate(${giftState.rotation}deg)` }}>
+                                    <svg viewBox="0 0 100 100" className="w-full h-full font-roboto">
+                                        {SPECIAL_GIFTS.map((item, index) => {
+                                            const slice = 360 / SPECIAL_GIFTS.length;
+                                            const rotate = index * slice;
+                                            const x1 = 50 + 50 * Math.cos(Math.PI * (-90 + slice) / 180);
+                                            const y1 = 50 + 50 * Math.sin(Math.PI * (-90 + slice) / 180);
+                                            const largeArcFlag = slice > 180 ? 1 : 0;
+                                            const pathData = `M 50 50 L 50 0 A 50 50 0 ${largeArcFlag} 1 ${x1} ${y1} Z`;
+
+                                            return (
+                                                <g key={index} transform={`rotate(${rotate} 50 50)`}>
+                                                    <path d={pathData} fill={COLORS[index % COLORS.length]} stroke="rgba(255,255,255,0.3)" strokeWidth="0.5"/>
+                                                    <text x="50" y="15" transform={`rotate(${slice/2} 50 50)`} textAnchor="middle" alignmentBaseline="middle"
+                                                        fill="white" fontWeight="900" fontSize="3.5" style={{textShadow: '2px 2px 4px rgba(0,0,0,0.9)'}}>
+                                                        {item.short}
+                                                    </text>
+                                                </g>
+                                            );
+                                        })}
+                                        <circle cx="50" cy="50" r="12" fill="#facc15" className="drop-shadow-xl" />
+                                        <circle cx="50" cy="50" r="8" fill="#854d0e" />
+                                    </svg>
+                                </div>
+                            </div>
+
+                            {/* POPUP KẾT QUẢ QUÀ BÍ ẨN */}
+                            {giftState.winner && (
+                                <div className="absolute inset-0 z-50 bg-black/80 flex items-center justify-center p-4">
+                                    <div className="bg-gradient-to-b from-yellow-300 to-yellow-600 p-10 md:p-16 rounded-[40px] text-center max-w-4xl w-full border-8 border-white shadow-[0_0_80px_rgba(250,204,21,0.6)] animate-pop">
+                                        <div className="text-[10vh] mb-4 animate-bounce">🎁</div>
+                                        <h3 className="text-[4vh] font-black text-yellow-900 mb-6 uppercase tracking-wider">Chúc mừng bạn nhận được:</h3>
+                                        <p className="text-[5vh] font-black text-white drop-shadow-lg leading-tight mb-10 px-8">
+                                            {giftState.winner.text}
+                                        </p>
+                                        <button id="btn-dong-qua" onClick={() => setGiftState({ active: false, isSpinning: false, rotation: 0, winner: null })}
+                                            className="px-20 py-6 bg-white text-yellow-700 rounded-full font-black hover:bg-gray-100 hover:scale-105 transition-transform text-[4vh] shadow-2xl uppercase border-4 border-yellow-200">
+                                            Tuyệt Vời! (Phím Q)
+                                        </button>
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+                    )}
+
+                    {/* POPUP KẾT QUẢ VÒNG QUAY CHÍNH */}
+                    {showWinnerModal && (
+                        <div className="fixed inset-0 bg-black/80 backdrop-blur-md z-50 flex items-center justify-center p-4">
+                        <div className={`p-12 rounded-[40px] text-center transform scale-110 animate-pop flex flex-col items-center max-w-2xl w-full border-4 shadow-2xl ${getCardClasses()}`}>
+                            <div className="text-8xl mb-6">{mode === 'REWARD' ? '🎁' : '🎉'}</div>
+                            <h2 className="text-3xl font-bold opacity-80 mb-2">
+                            {mode === 'REWARD' ? 'Phần thưởng dành cho bạn là:' : 'Xin chúc mừng học sinh:'}
+                            </h2>
+                            <div className={`text-[6vh] leading-tight font-black mb-10 ${theme === 'hologram' ? 'text-cyan-400' : 'text-blue-600'}`}>
+                            <MathText text={winner} isKatexLoaded={isKatexLoaded} />
+                            </div>
+                            <button onClick={() => setShowWinnerModal(false)}
+                            className="px-16 py-5 bg-blue-600 text-white rounded-full font-black hover:bg-blue-500 w-full text-3xl shadow-lg transition-transform hover:scale-105">
+                            Đóng
+                            </button>
+                        </div>
+                        </div>
+                    )}
+
+                    {/* MÀN HÌNH CHÚC MỪNG KHI HOÀN THÀNH HẾT CÂU HỎI */}
+                    {quizState.status === 'DONE' && (
+                        <div className="fixed inset-0 bg-black/95 z-50 flex flex-col items-center justify-center p-4 overflow-hidden">
+                        {[...Array(60)].map((_, i) => (
+                            <div key={i} className="absolute w-4 h-4 rounded-full animate-firework-infinite"
+                                style={{
+                                backgroundColor: COLORS[i % COLORS.length],
+                                left: `${10 + Math.random() * 80}%`,
+                                top: `${10 + Math.random() * 80}%`,
+                                '--dx': `${(Math.random() - 0.5) * 1000}px`,
+                                '--dy': `${(Math.random() - 0.5) * 1000}px`,
+                                animationDelay: `${Math.random() * 2}s`,
+                                animationDuration: `${1 + Math.random() * 1.5}s`
+                                }}>
+                            </div>
+                        ))}
+                        
+                        <div className="z-10 text-center animate-bounce-in flex flex-col items-center max-w-5xl w-full">
+                            <div className="text-[12vh] mb-4">🏆</div>
+                            <h1 className="text-[5vh] lg:text-[7vh] font-black text-transparent bg-clip-text bg-gradient-to-b from-yellow-200 to-yellow-500 drop-shadow-[0_0_30px_rgba(234,179,8,0.5)] mb-10 leading-tight uppercase">
+                            Tuyệt Vời! Đã Hoàn Thành Hết Bài Tập
+                            </h1>
+                            
+                            <div className="bg-[#1a1a1a]/80 backdrop-blur-md border-4 border-yellow-500/50 rounded-3xl p-10 lg:p-14 mb-12 shadow-[0_0_50px_rgba(234,179,8,0.2)] w-full">
+                            <p className="text-[4vh] lg:text-[5.5vh] font-bold text-white leading-relaxed tracking-wide drop-shadow-md italic text-center font-serif">
+                                "Muốn nên nghiệp lớn giúp đời <br/>
+                                Văn ôn toán luyện nghe lời thầy Lực khuyên !"
+                            </p>
+                            </div>
+                            
+                            <button onClick={() => setQuizState({ active: false, student: null, question: null, displayOptions: [], selectedOptIndex: null, streak: 0, status: null })}
+                                className="px-16 py-6 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-full text-[3vh] font-black shadow-[0_0_40px_rgba(37,99,235,0.6)] transition-transform hover:scale-110 active:scale-95 border-2 border-blue-400">
+                                🎡 TRỞ VỀ BẢNG ĐIỀU KHIỂN
+                            </button>
+                        </div>
+                        </div>
+                    )}
+                </div>
+            );
+        }
+
+        const rootElement = document.getElementById('root');
+        const root = ReactDOM.createRoot(rootElement);
+        root.render(<App />);
+    </script>
+</body>
+</html>
